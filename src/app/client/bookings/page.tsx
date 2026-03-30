@@ -41,6 +41,10 @@ export default function ClientBookings() {
   const [tipAmount, setTipAmount] = useState("");
   const [tipMessage, setTipMessage] = useState("");
   const [cancelPreview, setCancelPreview] = useState<{ id: string; feePercent: number; fee: number; refundAmount: number; policy: string } | null>(null);
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [incidentType, setIncidentType] = useState("SAFETY");
+  const [incidentSeverity, setIncidentSeverity] = useState("MEDIUM");
+  const [incidentDescription, setIncidentDescription] = useState("");
 
   useEffect(() => {
     fetchBookings();
@@ -119,6 +123,31 @@ export default function ClientBookings() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submitIncident = async (bookingId: string, chefUserId?: string) => {
+    const token = localStorage.getItem("token");
+    if (!incidentDescription.trim()) { alert("Please describe the issue"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/incidents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          bookingId,
+          reportedUserId: chefUserId || undefined,
+          type: incidentType,
+          severity: incidentSeverity,
+          description: incidentDescription.trim(),
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      setReportingId(null);
+      setIncidentDescription("");
+      setIncidentType("SAFETY");
+      setIncidentSeverity("MEDIUM");
+      alert("Report submitted. Our team will review it shortly.");
+    } finally { setSubmitting(false); }
   };
 
   const statusColors: Record<string, string> = {
@@ -240,7 +269,76 @@ export default function ClientBookings() {
                       💬 Message Chef
                     </a>
                   )}
+                  {(b.status === "COMPLETED" || b.status === "CANCELLED") && (
+                    <button
+                      onClick={() => { setReportingId(b.id); setIncidentDescription(""); }}
+                      className="text-red-400/70 text-sm font-medium hover:text-red-300 transition-colors"
+                    >
+                      ⚠ Report Issue
+                    </button>
+                  )}
                 </div>
+
+                {/* Incident Report Form */}
+                {reportingId === b.id && (
+                  <div className="mt-4 bg-dark border border-red-500/20 p-6 space-y-4">
+                    <h4 className="font-semibold text-red-400">Report an Issue</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Issue Type</label>
+                        <select
+                          value={incidentType}
+                          onChange={(e) => setIncidentType(e.target.value)}
+                          className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                        >
+                          <option value="SAFETY">Safety Concern</option>
+                          <option value="FOOD_QUALITY">Food Quality</option>
+                          <option value="PROPERTY_DAMAGE">Property Damage</option>
+                          <option value="HARASSMENT">Harassment</option>
+                          <option value="NO_SHOW">No Show</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Severity</label>
+                        <select
+                          value={incidentSeverity}
+                          onChange={(e) => setIncidentSeverity(e.target.value)}
+                          className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                        >
+                          <option value="LOW">Low</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="HIGH">High</option>
+                          <option value="CRITICAL">Critical</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Description</label>
+                      <textarea
+                        value={incidentDescription}
+                        onChange={(e) => setIncidentDescription(e.target.value)}
+                        placeholder="Describe the issue in detail..."
+                        className="w-full border border-dark-border bg-dark px-4 py-3 h-24 text-cream"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => submitIncident(b.id)}
+                        disabled={submitting || !incidentDescription.trim()}
+                        className="bg-red-500/10 text-red-400 px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                      >
+                        {submitting ? "Submitting..." : "Submit Report"}
+                      </button>
+                      <button
+                        onClick={() => setReportingId(null)}
+                        className="text-cream-muted text-sm hover:text-cream transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Cancel Fee Preview */}
                 {cancelPreview && cancelPreview.id === b.id && (

@@ -141,7 +141,7 @@ const roleColors: Record<string, string> = {
   ADMIN: "text-purple-400 bg-purple-500/10",
 };
 
-type Tab = "chefs" | "users" | "bookings" | "trucks" | "analytics" | "audit" | "alerts";
+type Tab = "chefs" | "users" | "bookings" | "trucks" | "analytics" | "audit" | "alerts" | "incidents";
 
 interface AnalyticsData {
   overview: { totalUsers: number; totalChefs: number; approvedChefs: number; totalBookings: number; completedBookings: number; cancelledBookings: number; completionRate: number; recentUsers: number; pendingVerifications: number };
@@ -171,6 +171,22 @@ interface ExpiryAlert {
   daysUntilExpiry: number;
 }
 
+interface Incident {
+  id: string;
+  reporterId: string;
+  reportedUserId: string | null;
+  bookingId: string | null;
+  type: string;
+  severity: string;
+  description: string;
+  status: string;
+  adminNotes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  reporter: { id: string; name: string; email: string };
+  reportedUser: { id: string; name: string; email: string } | null;
+}
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("chefs");
   const [chefs, setChefs] = useState<AdminChef[]>([]);
@@ -180,6 +196,9 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlert[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
+  const [incidentNotes, setIncidentNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [expandedChef, setExpandedChef] = useState<string | null>(null);
 
@@ -249,7 +268,30 @@ export default function AdminDashboard() {
     if (tab === "analytics" && !analytics) fetchAnalytics();
     if (tab === "audit") fetchAuditLogs();
     if (tab === "alerts") fetchExpiryAlerts();
+    if (tab === "incidents") fetchIncidents();
   }, [tab]);
+
+  const fetchIncidents = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch("/api/incidents", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setIncidents(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const updateIncident = async (id: string, status: string) => {
+    const token = getToken();
+    if (!token) return;
+    await fetch(`/api/incidents/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status, adminNotes: incidentNotes || undefined }),
+    });
+    setExpandedIncident(null);
+    setIncidentNotes("");
+    fetchIncidents();
+  };
 
   const updateChef = async (id: string, data: { isApproved?: boolean; isActive?: boolean; bgCheckStatus?: string; tier?: string; verificationStatus?: string; idVerificationStatus?: string }) => {
     const token = getToken();
@@ -322,6 +364,7 @@ export default function AdminDashboard() {
             { key: "trucks" as Tab, label: "Food Trucks", badge: null },
             { key: "analytics" as Tab, label: "Analytics", badge: null },
             { key: "audit" as Tab, label: "Audit Log", badge: null },
+            { key: "incidents" as Tab, label: "Incidents", badge: incidents.filter(i => i.status === "OPEN").length > 0 ? incidents.filter(i => i.status === "OPEN").length : null },
             { key: "alerts" as Tab, label: "Alerts", badge: expiryAlerts.length > 0 ? expiryAlerts.length : null },
           ]).map((t) => (
             <button
@@ -926,6 +969,126 @@ export default function AdminDashboard() {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && tab === "incidents" && (
+          /* ========== INCIDENTS TAB ========== */
+          <div className="space-y-4">
+            {incidents.length === 0 ? (
+              <div className="text-center py-16 bg-dark-card border border-dark-border">
+                <p className="text-4xl mb-3">✅</p>
+                <p className="text-cream-muted">No incident reports.</p>
+              </div>
+            ) : (
+              incidents.map((inc) => {
+                const severityColors: Record<string, string> = {
+                  LOW: "bg-blue-500/10 text-blue-400",
+                  MEDIUM: "bg-amber-500/10 text-amber-400",
+                  HIGH: "bg-orange-500/10 text-orange-400",
+                  CRITICAL: "bg-red-500/10 text-red-400",
+                };
+                const statusColors: Record<string, string> = {
+                  OPEN: "bg-red-500/10 text-red-400 border border-red-500/20",
+                  INVESTIGATING: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+                  RESOLVED: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+                  DISMISSED: "bg-dark-border text-cream-muted",
+                };
+                return (
+                  <div key={inc.id} className="bg-dark-card border border-dark-border">
+                    <div
+                      className="px-6 py-4 cursor-pointer hover:bg-dark-hover transition-colors"
+                      onClick={() => setExpandedIncident(expandedIncident === inc.id ? null : inc.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 tracking-wider uppercase ${severityColors[inc.severity] || ""}`}>{inc.severity}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 bg-dark-border text-cream-muted tracking-wider uppercase">{inc.type.replace("_", " ")}</span>
+                          <span className="text-sm font-medium">{inc.reporter.name}</span>
+                          {inc.reportedUser && (
+                            <span className="text-xs text-cream-muted">→ {inc.reportedUser.name}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`text-[10px] font-bold px-3 py-1 tracking-wider uppercase ${statusColors[inc.status] || ""}`}>{inc.status}</span>
+                          <span className="text-xs text-cream-muted">{new Date(inc.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-cream-muted mt-2 line-clamp-2">{inc.description}</p>
+                    </div>
+                    {expandedIncident === inc.id && (
+                      <div className="px-6 pb-5 border-t border-dark-border pt-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-cream-muted/60 text-xs">Reporter:</span>
+                            <p>{inc.reporter.name} ({inc.reporter.email})</p>
+                          </div>
+                          {inc.reportedUser && (
+                            <div>
+                              <span className="text-cream-muted/60 text-xs">Reported User:</span>
+                              <p>{inc.reportedUser.name} ({inc.reportedUser.email})</p>
+                            </div>
+                          )}
+                          {inc.bookingId && (
+                            <div>
+                              <span className="text-cream-muted/60 text-xs">Booking:</span>
+                              <p className="text-xs font-mono">{inc.bookingId.slice(0, 12)}...</p>
+                            </div>
+                          )}
+                          {inc.resolvedAt && (
+                            <div>
+                              <span className="text-cream-muted/60 text-xs">Resolved:</span>
+                              <p>{new Date(inc.resolvedAt).toLocaleString()}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-cream-muted/60 text-xs">Full Description:</span>
+                          <p className="text-sm mt-1">{inc.description}</p>
+                        </div>
+                        {inc.adminNotes && (
+                          <div className="bg-dark border border-dark-border p-3">
+                            <span className="text-cream-muted/60 text-xs">Admin Notes:</span>
+                            <p className="text-sm mt-1">{inc.adminNotes}</p>
+                          </div>
+                        )}
+                        {inc.status !== "RESOLVED" && inc.status !== "DISMISSED" && (
+                          <div className="space-y-3">
+                            <textarea
+                              placeholder="Admin notes..."
+                              value={incidentNotes}
+                              onChange={(e) => setIncidentNotes(e.target.value)}
+                              className="w-full border border-dark-border bg-dark px-4 py-3 h-20 text-cream text-sm"
+                            />
+                            <div className="flex gap-2">
+                              {inc.status === "OPEN" && (
+                                <button
+                                  onClick={() => updateIncident(inc.id, "INVESTIGATING")}
+                                  className="bg-amber-500/10 text-amber-400 px-5 py-2 text-xs font-semibold tracking-wider uppercase hover:bg-amber-500/20 transition-colors"
+                                >
+                                  Investigate
+                                </button>
+                              )}
+                              <button
+                                onClick={() => updateIncident(inc.id, "RESOLVED")}
+                                className="bg-emerald-500/10 text-emerald-400 px-5 py-2 text-xs font-semibold tracking-wider uppercase hover:bg-emerald-500/20 transition-colors"
+                              >
+                                Resolve
+                              </button>
+                              <button
+                                onClick={() => updateIncident(inc.id, "DISMISSED")}
+                                className="text-cream-muted/50 text-xs font-medium hover:text-cream-muted transition-colors px-3"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
         {!loading && tab === "alerts" && (

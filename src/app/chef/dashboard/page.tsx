@@ -67,6 +67,29 @@ interface BlockedDate {
   reason: string | null;
 }
 
+interface StripeStatus {
+  hasAccount: boolean;
+  onboarded: boolean;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  detailsSubmitted?: boolean;
+}
+
+interface InsuranceData {
+  insuranceDocUrl: string | null;
+  insuranceExpiry: string | null;
+  insuranceVerified: boolean;
+  isExpired: boolean;
+}
+
+interface LegalTerms {
+  clientTos: string | null;
+  liabilityWaiver: string | null;
+  chefTerms: string | null;
+  antiPoaching: string | null;
+  nonCompete: string | null;
+}
+
 export default function ChefDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +100,18 @@ export default function ChefDashboard() {
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [dashTab, setDashTab] = useState<"bookings" | "gallery" | "availability">("bookings");
+  const [dashTab, setDashTab] = useState<"bookings" | "gallery" | "availability" | "payments" | "settings">("bookings");
+
+  // New feature state
+  const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [insurance, setInsurance] = useState<InsuranceData | null>(null);
+  const [insuranceUploading, setInsuranceUploading] = useState(false);
+  const [insuranceDocUrl, setInsuranceDocUrl] = useState("");
+  const [insuranceExpiry, setInsuranceExpiry] = useState("");
+  const [legalTerms, setLegalTerms] = useState<LegalTerms | null>(null);
+  const [signingTerms, setSigningTerms] = useState<string | null>(null);
+  const [signature, setSignature] = useState("");
 
   useEffect(() => {
     fetchBookings();
@@ -85,6 +119,9 @@ export default function ChefDashboard() {
     fetchVerification();
     fetchGallery();
     fetchBlockedDates();
+    fetchStripeStatus();
+    fetchInsurance();
+    fetchLegalTerms();
   }, [filter]);
 
   const fetchTierData = async () => {
@@ -180,6 +217,108 @@ export default function ChefDashboard() {
     try {
       const res = await fetch("/api/chefs/availability", { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) setBlockedDates(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const fetchStripeStatus = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/stripe/connect", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setStripeStatus(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const fetchInsurance = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/chefs/insurance", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setInsurance(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const fetchLegalTerms = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/legal/accept-terms", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setLegalTerms(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const setupStripeConnect = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setStripeLoading(true);
+    try {
+      const res = await fetch("/api/stripe/connect", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error); return; }
+      if (data.alreadyOnboarded && data.dashboardUrl) {
+        window.open(data.dashboardUrl, "_blank");
+      } else if (data.onboardingUrl) {
+        window.location.href = data.onboardingUrl;
+      }
+    } catch { alert("Failed to set up payments"); }
+    finally { setStripeLoading(false); }
+  };
+
+  const uploadInsurance = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !insuranceDocUrl || !insuranceExpiry) return;
+    setInsuranceUploading(true);
+    try {
+      const res = await fetch("/api/chefs/insurance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ insuranceDocUrl, insuranceExpiry }),
+      });
+      if (res.ok) {
+        setInsuranceDocUrl("");
+        setInsuranceExpiry("");
+        fetchInsurance();
+      } else {
+        const data = await res.json();
+        alert(data.error);
+      }
+    } finally { setInsuranceUploading(false); }
+  };
+
+  const acceptTerms = async (termsType: string) => {
+    const token = localStorage.getItem("token");
+    if (!token || !signature.trim()) return;
+    try {
+      const res = await fetch("/api/legal/accept-terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ termsType, signature: signature.trim() }),
+      });
+      if (res.ok) {
+        setSigningTerms(null);
+        setSignature("");
+        fetchLegalTerms();
+      } else {
+        const data = await res.json();
+        alert(data.error);
+      }
+    } catch { alert("Failed to accept terms"); }
+  };
+
+  const handleInsuranceFileUpload = async (file: File) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/uploads", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
+      if (res.ok) {
+        const { url } = await res.json();
+        setInsuranceDocUrl(url);
+      }
     } catch { /* ignore */ }
   };
 
@@ -388,14 +527,25 @@ export default function ChefDashboard() {
         </div>
 
         {/* Dashboard Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-dark-border pb-4">
-          {(["bookings", "gallery", "availability"] as const).map((t) => (
+        <div className="flex gap-2 mb-6 border-b border-dark-border pb-4 overflow-x-auto">
+          {([
+            { key: "bookings" as const, label: "📋 Bookings" },
+            { key: "gallery" as const, label: "📸 Gallery" },
+            { key: "availability" as const, label: "📅 Availability" },
+            { key: "payments" as const, label: "💳 Payments" },
+            { key: "settings" as const, label: "⚙️ Settings" },
+          ]).map((t) => (
             <button
-              key={t}
-              onClick={() => setDashTab(t)}
-              className={`px-5 py-2.5 text-sm font-semibold tracking-wider uppercase transition-colors ${dashTab === t ? "bg-gold text-dark" : "bg-dark-card border border-dark-border text-cream-muted hover:border-gold/30"}`}
+              key={t.key}
+              onClick={() => setDashTab(t.key)}
+              className={`px-5 py-2.5 text-sm font-semibold tracking-wider uppercase transition-colors whitespace-nowrap ${
+                dashTab === t.key ? "bg-gold text-dark" : "bg-dark-card border border-dark-border text-cream-muted hover:border-gold/30"
+              }`}
             >
-              {t === "bookings" ? "📋 Bookings" : t === "gallery" ? "📸 Gallery" : "📅 Availability"}
+              {t.label}
+              {t.key === "payments" && stripeStatus && !stripeStatus.onboarded && (
+                <span className="ml-2 w-2 h-2 bg-amber-400 inline-block" />
+              )}
             </button>
           ))}
         </div>
@@ -642,6 +792,242 @@ export default function ChefDashboard() {
           </div>
         )}
           </>
+        )}
+
+        {/* Payments Tab — Stripe Connect */}
+        {dashTab === "payments" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold">Payment Setup</h2>
+            <p className="text-sm text-cream-muted">Connect your bank account to receive payouts from bookings.</p>
+
+            <div className="bg-dark-card border border-dark-border p-6">
+              {!stripeStatus || !stripeStatus.hasAccount ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-4xl">🏦</div>
+                  <h3 className="font-semibold text-lg">Set Up Payouts</h3>
+                  <p className="text-sm text-cream-muted max-w-md mx-auto">
+                    Connect your bank account through Stripe to receive earnings from completed bookings. Setup takes 2-3 minutes.
+                  </p>
+                  <button
+                    onClick={setupStripeConnect}
+                    disabled={stripeLoading}
+                    className="bg-gold text-dark px-8 py-3 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                  >
+                    {stripeLoading ? "Setting up..." : "Connect Bank Account"}
+                  </button>
+                </div>
+              ) : stripeStatus.onboarded ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">✅</span>
+                    <div>
+                      <h3 className="font-semibold text-emerald-400">Payments Active</h3>
+                      <p className="text-sm text-cream-muted">Your account is fully set up to receive payouts.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-dark border border-dark-border p-4">
+                      <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Charges</p>
+                      <p className={`text-sm font-bold mt-1 ${stripeStatus.chargesEnabled ? "text-emerald-400" : "text-red-400"}`}>
+                        {stripeStatus.chargesEnabled ? "Enabled" : "Disabled"}
+                      </p>
+                    </div>
+                    <div className="bg-dark border border-dark-border p-4">
+                      <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Payouts</p>
+                      <p className={`text-sm font-bold mt-1 ${stripeStatus.payoutsEnabled ? "text-emerald-400" : "text-amber-400"}`}>
+                        {stripeStatus.payoutsEnabled ? "Enabled" : "Pending"}
+                      </p>
+                    </div>
+                    <div className="bg-dark border border-dark-border p-4">
+                      <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Details</p>
+                      <p className={`text-sm font-bold mt-1 ${stripeStatus.detailsSubmitted ? "text-emerald-400" : "text-amber-400"}`}>
+                        {stripeStatus.detailsSubmitted ? "Complete" : "Incomplete"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={setupStripeConnect}
+                    disabled={stripeLoading}
+                    className="border border-gold/40 text-gold px-6 py-2 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold/10 transition-colors disabled:opacity-40"
+                  >
+                    {stripeLoading ? "Loading..." : "Open Stripe Dashboard"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">⏳</span>
+                    <div>
+                      <h3 className="font-semibold text-amber-400">Onboarding Incomplete</h3>
+                      <p className="text-sm text-cream-muted">You started setup but haven&apos;t finished. Complete onboarding to receive payouts.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={setupStripeConnect}
+                    disabled={stripeLoading}
+                    className="bg-gold text-dark px-8 py-3 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                  >
+                    {stripeLoading ? "Loading..." : "Continue Setup"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-blue-500/5 border border-blue-500/20 px-5 py-4">
+              <p className="text-sm text-blue-300">
+                💡 Platform fee is 30% per booking. You receive 70% directly to your bank account after job completion.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab — Insurance + Legal */}
+        {dashTab === "settings" && (
+          <div className="space-y-8">
+            {/* Insurance Section */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Insurance</h2>
+              <div className="bg-dark-card border border-dark-border p-6 space-y-4">
+                {insurance && insurance.insuranceDocUrl ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{insurance.insuranceVerified ? "✅" : insurance.isExpired ? "🔴" : "⏳"}</span>
+                        <div>
+                          <h3 className={`font-semibold ${insurance.insuranceVerified ? "text-emerald-400" : insurance.isExpired ? "text-red-400" : "text-amber-400"}`}>
+                            {insurance.insuranceVerified ? "Insurance Verified" : insurance.isExpired ? "Insurance Expired" : "Pending Verification"}
+                          </h3>
+                          <p className="text-sm text-cream-muted">
+                            Expires: {insurance.insuranceExpiry ? new Date(insurance.insuranceExpiry).toLocaleDateString() : "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={insurance.insuranceDocUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gold text-sm font-medium hover:text-gold-light transition-colors"
+                      >
+                        View Document →
+                      </a>
+                    </div>
+                    {insurance.isExpired && (
+                      <div className="bg-red-500/10 border border-red-500/20 px-4 py-3">
+                        <p className="text-sm text-red-400">Your insurance has expired. Please upload a new document to continue accepting bookings.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-cream-muted text-sm mb-1">No insurance document on file.</p>
+                  </div>
+                )}
+
+                <div className="border-t border-dark-border pt-4 space-y-4">
+                  <h4 className="text-sm font-semibold">{insurance?.insuranceDocUrl ? "Update Insurance" : "Upload Insurance"}</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Insurance Document</label>
+                      <div className="flex gap-3 items-center">
+                        <label className="cursor-pointer border border-dark-border bg-dark px-4 py-2 text-sm text-cream-muted hover:border-gold/30 transition-colors">
+                          Choose File
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleInsuranceFileUpload(e.target.files[0]); }} />
+                        </label>
+                        {insuranceDocUrl && <span className="text-xs text-emerald-400">✓ Uploaded</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Expiry Date</label>
+                      <input
+                        type="date"
+                        value={insuranceExpiry}
+                        onChange={(e) => setInsuranceExpiry(e.target.value)}
+                        className="w-full max-w-xs border border-dark-border bg-dark px-4 py-3 text-cream"
+                      />
+                    </div>
+                    <button
+                      onClick={uploadInsurance}
+                      disabled={insuranceUploading || !insuranceDocUrl || !insuranceExpiry}
+                      className="bg-gold text-dark px-6 py-2 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                    >
+                      {insuranceUploading ? "Saving..." : "Save Insurance"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Legal Agreements Section */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Legal Agreements</h2>
+              <div className="space-y-3">
+                {([
+                  { key: "CHEF_NON_COMPETE", label: "Non-Compete Agreement", field: "nonCompete" as const, desc: "Agreement not to solicit clients outside the platform for 12 months." },
+                  { key: "CHEF_ANTI_POACHING", label: "Anti-Poaching Policy", field: "antiPoaching" as const, desc: "Agreement not to exchange personal contact info or arrange off-platform bookings." },
+                  { key: "CLIENT_TOS", label: "Terms of Service", field: "clientTos" as const, desc: "General terms governing use of the Foodies platform." },
+                  { key: "LIABILITY_WAIVER", label: "Liability Waiver", field: "liabilityWaiver" as const, desc: "Acknowledgment of risks and liability limitations." },
+                ]).map((term) => {
+                  const accepted = legalTerms?.[term.field];
+                  return (
+                    <div key={term.key} className="bg-dark-card border border-dark-border p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{accepted ? "✅" : "⬜"}</span>
+                        <div>
+                          <h4 className="font-semibold text-sm">{term.label}</h4>
+                          <p className="text-xs text-cream-muted">{term.desc}</p>
+                          {accepted && (
+                            <p className="text-[10px] text-cream-muted/50 mt-1">
+                              Accepted {new Date(accepted).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {!accepted && (
+                        <button
+                          onClick={() => { setSigningTerms(term.key); setSignature(""); }}
+                          className="bg-gold text-dark px-5 py-2 font-semibold text-xs tracking-[0.15em] uppercase hover:bg-gold-light transition-colors shrink-0"
+                        >
+                          Accept
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Signing Modal */}
+              {signingTerms && (
+                <div className="mt-4 bg-dark border border-gold/20 p-6 space-y-4">
+                  <h4 className="font-semibold">Digital Signature Required</h4>
+                  <p className="text-sm text-cream-muted">
+                    Type your full legal name to accept the agreement.
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Your full legal name"
+                    value={signature}
+                    onChange={(e) => setSignature(e.target.value)}
+                    className="w-full border border-dark-border bg-dark-card px-4 py-3 text-cream"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => acceptTerms(signingTerms)}
+                      disabled={!signature.trim()}
+                      className="bg-gold text-dark px-6 py-2 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                    >
+                      Sign &amp; Accept
+                    </button>
+                    <button
+                      onClick={() => { setSigningTerms(null); setSignature(""); }}
+                      className="text-cream-muted text-sm hover:text-cream transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </>
