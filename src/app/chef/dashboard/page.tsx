@@ -15,9 +15,9 @@ const TIER_REQUIREMENTS: Record<string, { completedJobs: number; minRating: numb
 };
 
 const TIER_CAPS: Record<string, number> = {
-  SOUS_CHEF: 60,
-  CHEF: 125,
-  MASTER_CHEF: Infinity,
+  SOUS_CHEF: 75,
+  CHEF: 120,
+  MASTER_CHEF: 200,
 };
 
 interface Booking {
@@ -397,7 +397,7 @@ export default function ChefDashboard() {
 
   const earnings = bookings
     .filter((b) => b.status === "COMPLETED")
-    .reduce((sum, b) => sum + b.subtotal, 0);
+    .reduce((sum, b) => sum + (b.subtotal - b.platformFee), 0);
 
   return (
     <>
@@ -707,7 +707,7 @@ export default function ChefDashboard() {
                       </span>
                     )}
                     <p className="text-lg font-bold mt-1 text-gold">${b.total}</p>
-                    <p className="text-xs text-cream-muted/50">You earn: ${b.subtotal}</p>
+                    <p className="text-xs text-cream-muted/50">You earn: ${(b.subtotal - b.platformFee).toFixed(2)}</p>
                   </div>
                 </div>
 

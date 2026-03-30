@@ -9,8 +9,11 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = req.headers.get("x-checkr-signature") || "";
 
-  // Verify webhook signature
-  if (process.env.CHECKR_WEBHOOK_SECRET && !verifyCheckrWebhook(body, signature)) {
+  // Verify webhook signature — reject if secret is not configured
+  if (!process.env.CHECKR_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "Checkr webhook secret not configured" }, { status: 503 });
+  }
+  if (!verifyCheckrWebhook(body, signature)) {
     console.error("Checkr webhook signature verification failed");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

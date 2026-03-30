@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { notifyBgCheckUpdate } from "@/lib/notifications";
-import {
-  isCheckrEnabled,
-  createCandidate,
-  createInvitation,
-  getReport,
-  mapCheckrStatus,
-} from "@/lib/checkr";
+import { isIdVerificationEnabled, createVerificationSession, getVerificationSession, mapIdentityStatus } from "@/lib/onfido";
+import { isCheckrEnabled, createCandidate, createInvitation, getReport, mapCheckrStatus } from "@/lib/checkr";
+import { isStripeEnabled, chargePlatformForBgCheck } from "@/lib/stripe";
 
-// POST /api/admin/bg-check — Initiate, check status, or admin-override a background check
+// Background check costs (in cents) — paid from platform Stripe account
+const IDENTITY_COST_CENTS = 150;  // ~$1.50 per Stripe Identity verification
+const CHECKR_COST_CENTS = 1500;   // ~$15 per Checkr criminal check
+
+// POST /api/admin/bg-check — Initiate ID verification, criminal check, check status, or admin-override
 export async function POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "ADMIN") {
@@ -30,7 +30,68 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chef not found" }, { status: 404 });
   }
 
-  if (action === "INITIATE") {
+  // INITIATE_ID — Stripe Identity verification (~$1.50, document + selfie)
+  if (action === "INITIATE_ID") {
+    if (!isIdVerificationEnabled()) {
+      return NextResponse.json({
+        error: "Stripe not configured. Set STRIPE_SECRET_KEY in environment.",
+      }, { status: 503 });
+    }
+
+    if (!chef.bgCheckFullName || !chef.bgCheckDOB) {
+      return NextResponse.json({
+        error: "Chef has not submitted verification info (name, DOB required)",
+      }, { status: 400 });
+    }
+
+    const nameParts = chef.bgCheckFullName.split(" ");
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(" ") || firstName;
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const session = await createVerificationSession({
+      firstName,
+      lastName,
+      email: chef.user.email,
+      chefProfileId,
+      returnUrl: `${appUrl}/chef/dashboard`,
+    });
+
+    // Charge platform Stripe account for ID verification cost
+    let stripeChargeId: string | null = null;
+    if (isStripeEnabled()) {
+      const charge = await chargePlatformForBgCheck(
+        IDENTITY_COST_CENTS,
+        chefProfileId,
+        `Stripe Identity verification for ${chef.bgCheckFullName}`
+      );
+      stripeChargeId = charge?.id ?? null;
+    }
+
+    await prisma.chefProfile.update({
+      where: { id: chefProfileId },
+      data: {
+        bgCheckExternalId: session.id, // Stripe Identity session ID for webhook matching
+        idVerificationStatus: "PENDING",
+        verificationStatus: "IDENTITY_VERIFIED",
+      },
+    });
+
+    notifyBgCheckUpdate(chef.userId, "IDENTITY_VERIFIED").catch(console.error);
+
+    return NextResponse.json({
+      success: true,
+      provider: "stripe_identity",
+      sessionId: session.id,
+      verificationUrl: session.url,
+      stripeChargeId,
+      cost: "$" + (IDENTITY_COST_CENTS / 100).toFixed(2),
+      message: "ID verification initiated via Stripe Identity — platform charged",
+    });
+  }
+
+  // INITIATE_CRIMINAL — Checkr criminal background check (~$15)
+  if (action === "INITIATE" || action === "INITIATE_CRIMINAL") {
     if (!isCheckrEnabled()) {
       return NextResponse.json({
         error: "Checkr API not configured. Set CHECKR_API_KEY in environment.",
@@ -43,35 +104,43 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Parse name into first/last
     const nameParts = chef.bgCheckFullName.split(" ");
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(" ") || firstName;
 
-    // Parse city/state from address
     const addressParts = (chef.bgCheckAddress || "").split(",").map((s) => s.trim());
-    const city = addressParts[0] || "Unknown";
-    const state = addressParts[1] || "MI";
+    const city = addressParts[1] || "Unknown";
+    const stateZip = (addressParts[2] || "MI 48912").split(" ");
+    const state = stateZip[0] || "MI";
 
-    // Create Checkr candidate
     const candidate = await createCandidate({
       firstName,
       lastName,
       email: chef.user.email,
       dob: chef.bgCheckDOB,
-      ssn: chef.bgCheckSSNLast4 || "", // In production, decrypt and send full SSN
+      ssn: chef.bgCheckSSNLast4 ? `000-00-${chef.bgCheckSSNLast4}` : "000-00-0000",
       city,
       state,
     });
 
-    // Create invitation (triggers the actual check)
     const invitation = await createInvitation(candidate.id);
+
+    // Charge platform Stripe account for Checkr cost
+    let stripeChargeId: string | null = null;
+    if (isStripeEnabled()) {
+      const charge = await chargePlatformForBgCheck(
+        CHECKR_COST_CENTS,
+        chefProfileId,
+        `Checkr criminal background check for ${chef.bgCheckFullName}`
+      );
+      stripeChargeId = charge?.id ?? null;
+    }
 
     await prisma.chefProfile.update({
       where: { id: chefProfileId },
       data: {
-        bgCheckExternalId: candidate.id,
-        bgCheckReportId: invitation.id,
+        bgCheckExternalId: candidate.id,  // Checkr candidate ID for webhook matching
+        bgCheckReportId: invitation.id,   // Checkr invitation ID
         bgCheckStatus: "PENDING",
         bgCheckSubmittedAt: new Date(),
         verificationStatus: "BG_CHECK_RUNNING",
@@ -82,56 +151,67 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      provider: "checkr",
       candidateId: candidate.id,
-      invitationId: invitation.id,
-      message: "Background check initiated via Checkr",
+      invitationUrl: invitation.invitation_url,
+      stripeChargeId,
+      cost: "$" + (CHECKR_COST_CENTS / 100).toFixed(2),
+      message: "Criminal background check initiated via Checkr — platform charged",
     });
   }
 
   if (action === "CHECK_STATUS") {
-    if (!chef.bgCheckReportId) {
-      return NextResponse.json({
-        bgCheckStatus: chef.bgCheckStatus,
-        message: "No external report ID — check was not initiated via Checkr",
-      });
-    }
+    const result: Record<string, unknown> = {
+      bgCheckStatus: chef.bgCheckStatus,
+      idVerificationStatus: chef.idVerificationStatus,
+    };
 
-    if (!isCheckrEnabled()) {
-      return NextResponse.json({
-        bgCheckStatus: chef.bgCheckStatus,
-        message: "Checkr API not configured — returning stored status",
-      });
-    }
-
-    const report = await getReport(chef.bgCheckReportId);
-    const mappedStatus = mapCheckrStatus(report.status);
-
-    // Update if status changed
-    if (mappedStatus !== chef.bgCheckStatus) {
-      const updateData: Record<string, unknown> = {
-        bgCheckStatus: mappedStatus,
-        bgCheckWebhookStatus: report.status,
-      };
-      if (mappedStatus === "CLEAR") {
-        updateData.bgCheckClearedAt = new Date();
-        updateData.verificationStatus = "APPROVED";
-      } else if (mappedStatus === "CONSIDER" || mappedStatus === "SUSPENDED") {
-        updateData.verificationStatus = "FLAGGED";
+    // Check Checkr status if we have an external ID
+    if (chef.bgCheckExternalId && chef.bgCheckReportId && isCheckrEnabled()) {
+      try {
+        const report = await getReport(chef.bgCheckReportId);
+        const mappedStatus = mapCheckrStatus(report.status);
+        if (mappedStatus !== chef.bgCheckStatus) {
+          const updateData: Record<string, unknown> = {
+            bgCheckStatus: mappedStatus,
+            bgCheckWebhookStatus: `checkr:${report.status}`,
+          };
+          if (mappedStatus === "CLEAR") {
+            updateData.bgCheckClearedAt = new Date();
+            updateData.verificationStatus = "APPROVED";
+            updateData.isApproved = true;
+          } else if (mappedStatus === "CONSIDER") {
+            updateData.verificationStatus = "FLAGGED";
+          }
+          await prisma.chefProfile.update({ where: { id: chefProfileId }, data: updateData });
+          notifyBgCheckUpdate(chef.userId, mappedStatus).catch(console.error);
+        }
+        result.bgCheckStatus = mappedStatus;
+        result.checkrStatus = report.status;
+      } catch (err) {
+        result.checkrError = err instanceof Error ? err.message : "Failed to check Checkr status";
       }
-
-      await prisma.chefProfile.update({
-        where: { id: chefProfileId },
-        data: updateData,
-      });
-
-      notifyBgCheckUpdate(chef.userId, mappedStatus).catch(console.error);
     }
 
-    return NextResponse.json({
-      bgCheckStatus: mappedStatus,
-      rawStatus: report.status,
-      completedAt: report.completed_at,
-    });
+    // Check Stripe Identity status if we have an external ID (and no Checkr report — it's an identity session)
+    if (chef.bgCheckExternalId && !chef.bgCheckReportId && isIdVerificationEnabled()) {
+      try {
+        const session = await getVerificationSession(chef.bgCheckExternalId);
+        const mappedId = mapIdentityStatus(session.status);
+        if (mappedId !== chef.idVerificationStatus) {
+          await prisma.chefProfile.update({
+            where: { id: chefProfileId },
+            data: { idVerificationStatus: mappedId },
+          });
+        }
+        result.idVerificationStatus = mappedId;
+        result.identityStatus = session.status;
+      } catch (err) {
+        result.identityError = err instanceof Error ? err.message : "Failed to check Stripe Identity status";
+      }
+    }
+
+    return NextResponse.json(result);
   }
 
   // ADMIN OVERRIDE — manually set bg check status (with audit)

@@ -4,297 +4,662 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding database...");
+  console.log("🌱 Seeding Foodies database...\n");
 
-  // Create admin user
-  const adminHash = await bcrypt.hash("admin123", 12);
+  const pw = await bcrypt.hash("Password123!", 12);
+
+  // ── Admin ──
   const admin = await prisma.user.upsert({
-    where: { email: "admin@chefconnect.com" },
+    where: { email: "admin.foodiesservices@gmail.com" },
     update: {},
     create: {
-      email: "admin@chefconnect.com",
-      passwordHash: adminHash,
-      name: "Admin",
+      email: "admin.foodiesservices@gmail.com",
+      passwordHash: await bcrypt.hash("RiceBoogers123456!", 12),
+      name: "Foodies Admin",
       role: "ADMIN",
+      referralCode: "FOODIES-ADMIN",
     },
   });
-  console.log("Admin user created:", admin.email);
+  console.log("✅ Admin:", admin.email);
 
-  // Create a sample client
-  const clientHash = await bcrypt.hash("client123", 12);
-  const client = await prisma.user.upsert({
-    where: { email: "client@example.com" },
-    update: {},
-    create: {
-      email: "client@example.com",
-      passwordHash: clientHash,
-      name: "Jane Doe",
-      phone: "555-0100",
-      role: "CLIENT",
-    },
-  });
-  console.log("Client user created:", client.email);
+  // ── Clients ──
+  const clients = [];
+  const clientData = [
+    { email: "jane@example.com", name: "Jane Mitchell", phone: "555-0100", referralCode: "JANE2025" },
+    { email: "david@example.com", name: "David Chen", phone: "555-0101", referralCode: "DAVID2025" },
+    { email: "sarah@example.com", name: "Sarah Williams", phone: "555-0102", referralCode: "SARAH2025" },
+    { email: "mike@example.com", name: "Mike Johnson", phone: "555-0103", referralCode: "MIKE2025" },
+  ];
+  for (const c of clientData) {
+    const user = await prisma.user.upsert({
+      where: { email: c.email },
+      update: {},
+      create: { ...c, passwordHash: pw, role: "CLIENT", termsAcceptedAt: new Date(), liabilityWaiverAt: new Date() },
+    });
+    clients.push(user);
+    console.log("✅ Client:", user.name);
+  }
 
-  // Create a second test client
-  const client2Hash = await bcrypt.hash("test123", 12);
-  const client2 = await prisma.user.upsert({
-    where: { email: "testuser@example.com" },
-    update: {},
-    create: {
-      email: "testuser@example.com",
-      passwordHash: client2Hash,
-      name: "Test User",
-      phone: "555-0199",
-      role: "CLIENT",
-    },
-  });
-  console.log("Test user created:", client2.email);
-
-  // Create sample chef users and profiles
-  const chefData = [
+  // ── Chefs ──
+  const chefSeedData = [
     {
       email: "marco@example.com",
       name: "Marco Rossi",
-      bio: "Italian-trained chef with 15 years of fine dining experience. Specializing in handmade pasta and regional Italian cuisine.",
+      bio: "Italian-trained chef with 15 years of fine dining experience. Specializing in handmade pasta and regional Italian cuisine from Emilia-Romagna.",
       specialtyDish: "Handmade Truffle Ravioli",
       cuisineType: "Italian",
       hourlyRate: 85,
-      bgCheckConsent: true,
-      bgCheckStatus: "CLEARED",
-      bgCheckFullName: "Marco Antonio Rossi",
-      bgCheckDOB: "1986-05-14",
-      bgCheckSSNLast4: "4821",
-      bgCheckSubmittedAt: new Date("2026-02-10"),
-      bgCheckClearedAt: new Date("2026-02-15"),
-      vehicleLicensePlate: "7ABC123",
-      vehicleMake: "Toyota",
-      vehicleModel: "Camry",
-      vehicleColor: "Silver",
-      driversLicenseNumber: "D1234567",
-      willTravelToHomes: true,
-      tier: "CHEF",
-      completedJobs: 12,
+      tier: "MASTER_CHEF",
+      completedJobs: 47,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
       verificationStatus: "APPROVED",
       idVerificationStatus: "VERIFIED",
-      governmentIdType: "DRIVERS_LICENSE",
-      governmentIdUrl: "/uploads/sample-id.jpg",
-      selfieUrl: "/uploads/sample-selfie.jpg",
-      fcraConsentSignature: "Marco Antonio Rossi",
-      fcraConsentTimestamp: new Date("2026-02-10"),
-      bgCheckAddress: "456 Olive Street, Los Angeles, CA 90001",
-      termsAcceptedAt: new Date("2026-02-10"),
-      antiPoachingAcceptedAt: new Date("2026-02-10"),
+      insuranceStatus: "verified",
+      insuranceProvider: "thimble",
+      insurancePolicyNumber: "THM-2025-00482",
+      activationStatus: "ACTIVE",
+      trustScore: 92,
+      boostActive: true,
+      boostExpiresAt: new Date(Date.now() + 7 * 86400000),
+      vehicle: { plate: "7ABC123", make: "Toyota", model: "Camry", color: "Silver" },
       specials: [
-        { name: "Truffle Ravioli", description: "Handmade ravioli with black truffle cream sauce", price: 45 },
-        { name: "Osso Buco Milanese", description: "Braised veal shanks with saffron risotto", price: 55 },
-        { name: "Tiramisu", description: "Classic Italian dessert with espresso-soaked ladyfingers", price: 20 },
+        { name: "Truffle Ravioli", description: "Handmade ravioli with black truffle cream sauce and aged Parmigiano", price: 45 },
+        { name: "Osso Buco Milanese", description: "Braised veal shanks with saffron risotto and gremolata", price: 55 },
+        { name: "Tiramisu", description: "Classic espresso-soaked ladyfingers with mascarpone cream", price: 20 },
+        { name: "Burrata Caprese", description: "Fresh burrata with heirloom tomatoes and basil oil", price: 28 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600", caption: "Fresh truffle ravioli" },
+        { url: "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=600", caption: "Osso buco plating" },
+        { url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=600", caption: "Dessert spread" },
       ],
     },
     {
       email: "aiko@example.com",
       name: "Aiko Tanaka",
-      bio: "Japanese-born chef blending traditional technique with modern flair. Former head chef at a Michelin-starred restaurant in Tokyo.",
+      bio: "Japanese-born chef blending traditional technique with modern flair. Former head chef at a Michelin-starred restaurant in Tokyo. Specializing in omakase and kaiseki.",
       specialtyDish: "Omakase Sushi Experience",
       cuisineType: "Japanese",
-      hourlyRate: 120,
-      bgCheckConsent: true,
-      bgCheckStatus: "PENDING",
-      bgCheckFullName: "Aiko Tanaka",
-      bgCheckDOB: "1990-11-03",
-      bgCheckSSNLast4: "7732",
-      bgCheckSubmittedAt: new Date("2026-03-25"),
-      bgCheckClearedAt: null,
-      vehicleLicensePlate: "8XYZ789",
-      vehicleMake: "Honda",
-      vehicleModel: "Accord",
-      vehicleColor: "Black",
-      driversLicenseNumber: "H9876543",
-      willTravelToHomes: true,
+      hourlyRate: 150,
       tier: "MASTER_CHEF",
-      completedJobs: 28,
-      verificationStatus: "BG_CHECK_RUNNING",
+      completedJobs: 63,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
+      verificationStatus: "APPROVED",
       idVerificationStatus: "VERIFIED",
-      governmentIdType: "PASSPORT",
-      governmentIdUrl: "/uploads/sample-id.jpg",
-      selfieUrl: "/uploads/sample-selfie.jpg",
-      fcraConsentSignature: "Aiko Tanaka",
-      fcraConsentTimestamp: new Date("2026-03-25"),
-      bgCheckAddress: "789 Sakura Lane, Torrance, CA 90501",
-      termsAcceptedAt: new Date("2026-03-25"),
-      antiPoachingAcceptedAt: new Date("2026-03-25"),
+      insuranceStatus: "verified",
+      insuranceProvider: "thimble",
+      insurancePolicyNumber: "THM-2025-00519",
+      activationStatus: "ACTIVE",
+      trustScore: 97,
+      boostActive: false,
+      boostExpiresAt: null,
+      vehicle: { plate: "8XYZ789", make: "Lexus", model: "RX", color: "Pearl White" },
       specials: [
-        { name: "Omakase Sushi (12 pc)", description: "Chef's selection of premium nigiri with imported fish", price: 95 },
-        { name: "Wagyu Tataki", description: "Seared A5 wagyu with ponzu and microgreens", price: 75 },
-        { name: "Matcha Lava Cake", description: "Warm matcha cake with white chocolate center", price: 25 },
+        { name: "Omakase Sushi (12 pc)", description: "Chef's selection of premium nigiri with imported fish from Tsukiji", price: 120 },
+        { name: "Wagyu Tataki", description: "Seared A5 wagyu with ponzu, microgreens, and truffle salt", price: 85 },
+        { name: "Kaiseki Tasting (7 course)", description: "Traditional multi-course seasonal Japanese dinner", price: 200 },
+        { name: "Matcha Lava Cake", description: "Warm matcha cake with white chocolate center and yuzu cream", price: 25 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600", caption: "Omakase sushi selection" },
+        { url: "https://images.unsplash.com/photo-1553621042-f6e147245754?w=600", caption: "Wagyu preparation" },
+        { url: "https://images.unsplash.com/photo-1580822184713-fc5400e7fe10?w=600", caption: "Kaiseki course" },
       ],
     },
     {
       email: "carlos@example.com",
       name: "Carlos Rivera",
-      bio: "Bringing the bold flavors of Mexico to your table. Authentic recipes passed down through generations, elevated with modern techniques.",
+      bio: "Bringing the bold flavors of Mexico to your table. Authentic recipes passed down through generations, elevated with modern techniques. From Oaxaca to your kitchen.",
       specialtyDish: "Mole Negro Oaxaqueño",
       cuisineType: "Mexican",
       hourlyRate: 65,
-      bgCheckConsent: true,
-      bgCheckStatus: "NOT_SUBMITTED",
-      bgCheckFullName: null,
-      bgCheckDOB: null,
-      bgCheckSSNLast4: null,
-      bgCheckSubmittedAt: null,
-      bgCheckClearedAt: null,
-      vehicleLicensePlate: null,
-      vehicleMake: null,
-      vehicleModel: null,
-      vehicleColor: null,
-      driversLicenseNumber: null,
-      willTravelToHomes: false,
-      tier: "SOUS_CHEF",
-      completedJobs: 2,
-      verificationStatus: "NOT_STARTED",
-      idVerificationStatus: "NOT_SUBMITTED",
-      governmentIdType: null,
-      governmentIdUrl: null,
-      selfieUrl: null,
-      fcraConsentSignature: null,
-      fcraConsentTimestamp: null,
-      bgCheckAddress: null,
-      termsAcceptedAt: null,
-      antiPoachingAcceptedAt: null,
+      tier: "CHEF",
+      completedJobs: 18,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
+      verificationStatus: "APPROVED",
+      idVerificationStatus: "VERIFIED",
+      insuranceStatus: "verified",
+      insuranceProvider: "state_farm",
+      insurancePolicyNumber: "SF-9281374",
+      activationStatus: "ACTIVE",
+      trustScore: 78,
+      boostActive: false,
+      boostExpiresAt: null,
+      vehicle: { plate: "4MEX567", make: "Ford", model: "F-150", color: "Red" },
       specials: [
-        { name: "Mole Negro", description: "28-ingredient traditional Oaxacan mole with chicken", price: 40 },
-        { name: "Cochinita Pibil Tacos", description: "Slow-roasted pork with pickled onions and habanero", price: 30 },
+        { name: "Mole Negro", description: "28-ingredient traditional Oaxacan mole with free-range chicken", price: 40 },
+        { name: "Cochinita Pibil Tacos", description: "Slow-roasted pork with pickled red onions and habanero", price: 30 },
+        { name: "Elote Street Corn", description: "Grilled corn with cotija, lime crema, and chili powder", price: 12 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600", caption: "Mole negro plating" },
+        { url: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600", caption: "Taco spread" },
+      ],
+    },
+    {
+      email: "priya@example.com",
+      name: "Priya Sharma",
+      bio: "Award-winning Indian chef specializing in regional cuisines from Kerala to Punjab. Known for complex spice layering and stunning presentation.",
+      specialtyDish: "Hyderabadi Dum Biryani",
+      cuisineType: "Indian",
+      hourlyRate: 75,
+      tier: "CHEF",
+      completedJobs: 22,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
+      verificationStatus: "APPROVED",
+      idVerificationStatus: "VERIFIED",
+      insuranceStatus: "pending",
+      insuranceProvider: null,
+      insurancePolicyNumber: null,
+      activationStatus: "PENDING_COMPLIANCE",
+      trustScore: 65,
+      boostActive: false,
+      boostExpiresAt: null,
+      vehicle: { plate: "3IND890", make: "Honda", model: "CR-V", color: "Blue" },
+      specials: [
+        { name: "Hyderabadi Dum Biryani", description: "Slow-cooked basmati with saffron, tender lamb, and aromatic spices", price: 38 },
+        { name: "Butter Chicken", description: "Tandoori chicken in rich tomato-cream sauce with fresh naan", price: 32 },
+        { name: "Masala Dosa", description: "Crispy fermented crepe with spiced potato filling and chutneys", price: 18 },
+        { name: "Gulab Jamun", description: "Warm milk-solid dumplings in cardamom rose syrup", price: 14 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600", caption: "Biryani presentation" },
+        { url: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600", caption: "Butter chicken" },
+      ],
+    },
+    {
+      email: "antoine@example.com",
+      name: "Antoine Beaumont",
+      bio: "Le Cordon Bleu graduate with 20 years in Parisian fine dining. Bringing the elegance and precision of French cuisine to intimate private events.",
+      specialtyDish: "Beef Bourguignon",
+      cuisineType: "French",
+      hourlyRate: 130,
+      tier: "MASTER_CHEF",
+      completedJobs: 55,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
+      verificationStatus: "APPROVED",
+      idVerificationStatus: "VERIFIED",
+      insuranceStatus: "verified",
+      insuranceProvider: "thimble",
+      insurancePolicyNumber: "THM-2025-00601",
+      activationStatus: "ACTIVE",
+      trustScore: 95,
+      boostActive: true,
+      boostExpiresAt: new Date(Date.now() + 3 * 86400000),
+      vehicle: { plate: "2FRN456", make: "BMW", model: "X3", color: "Midnight Blue" },
+      specials: [
+        { name: "Beef Bourguignon", description: "Burgundy-braised beef with pearl onions, mushrooms, and lardons", price: 52 },
+        { name: "Duck Confit", description: "Slow-cooked duck leg with crispy skin, lentils du Puy, and jus", price: 48 },
+        { name: "Crème Brûlée Trio", description: "Vanilla, lavender, and passion fruit crème brûlées", price: 22 },
+        { name: "French Onion Soup", description: "Caramelized onion soup gratinéed with Gruyère", price: 18 },
+        { name: "Tarte Tatin", description: "Caramelized upside-down apple tart with crème fraîche", price: 20 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600", caption: "Fine dining setup" },
+        { url: "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=600", caption: "Beef bourguignon" },
+        { url: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600", caption: "Crème brûlée" },
+      ],
+    },
+    {
+      email: "sofia@example.com",
+      name: "Sofia Papadopoulos",
+      bio: "Greek-American chef celebrating Mediterranean flavors. Farm-to-table advocate sourcing local ingredients for vibrant, healthy meals.",
+      specialtyDish: "Grilled Lamb Chops with Tzatziki",
+      cuisineType: "Mediterranean",
+      hourlyRate: 70,
+      tier: "SOUS_CHEF",
+      completedJobs: 5,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
+      verificationStatus: "APPROVED",
+      idVerificationStatus: "VERIFIED",
+      insuranceStatus: "missing",
+      insuranceProvider: null,
+      insurancePolicyNumber: null,
+      activationStatus: "PENDING_COMPLIANCE",
+      trustScore: 42,
+      boostActive: false,
+      boostExpiresAt: null,
+      vehicle: { plate: "6MED234", make: "Subaru", model: "Outback", color: "Green" },
+      specials: [
+        { name: "Grilled Lamb Chops", description: "Herb-marinated lamb with house-made tzatziki and roasted vegetables", price: 44 },
+        { name: "Spanakopita", description: "Flaky phyllo filled with spinach, feta, and fresh herbs", price: 16 },
+        { name: "Baklava", description: "Layers of phyllo with walnuts, pistachios, and honey syrup", price: 14 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600", caption: "Grilled lamb chops" },
+      ],
+    },
+    {
+      email: "kenji@example.com",
+      name: "Kenji Yamamoto",
+      bio: "Former ramen shop owner turned private chef. Specializing in Japanese comfort food, ramen, and izakaya-style small plates.",
+      specialtyDish: "Tonkotsu Ramen",
+      cuisineType: "Japanese",
+      hourlyRate: 55,
+      tier: "SOUS_CHEF",
+      completedJobs: 3,
+      isApproved: false,
+      bgCheckStatus: "PENDING",
+      verificationStatus: "BG_CHECK_RUNNING",
+      idVerificationStatus: "VERIFIED",
+      insuranceStatus: "missing",
+      insuranceProvider: null,
+      insurancePolicyNumber: null,
+      activationStatus: "INCOMPLETE",
+      trustScore: 15,
+      boostActive: false,
+      boostExpiresAt: null,
+      vehicle: null,
+      specials: [
+        { name: "Tonkotsu Ramen", description: "18-hour pork bone broth with chashu, ajitama, and handmade noodles", price: 28 },
+        { name: "Karaage Plate", description: "Japanese fried chicken with kewpie mayo and shredded cabbage", price: 18 },
+      ],
+      gallery: [],
+    },
+    {
+      email: "elena@example.com",
+      name: "Elena Vasquez",
+      bio: "Peruvian-born chef with a passion for ceviche and Nikkei cuisine. Blending South American and Japanese flavors in unexpected ways.",
+      specialtyDish: "Classic Limeño Ceviche",
+      cuisineType: "Peruvian",
+      hourlyRate: 80,
+      tier: "CHEF",
+      completedJobs: 14,
+      isApproved: true,
+      bgCheckStatus: "CLEAR",
+      verificationStatus: "APPROVED",
+      idVerificationStatus: "VERIFIED",
+      insuranceStatus: "expired",
+      insuranceProvider: "thimble",
+      insurancePolicyNumber: "THM-2024-00211",
+      activationStatus: "RESTRICTED",
+      trustScore: 35,
+      boostActive: false,
+      boostExpiresAt: null,
+      vehicle: { plate: "9PER012", make: "Toyota", model: "RAV4", color: "White" },
+      specials: [
+        { name: "Classic Limeño Ceviche", description: "Fresh sea bass cured in tiger's milk with sweet potato and cancha", price: 34 },
+        { name: "Lomo Saltado", description: "Stir-fried beef tenderloin with tomatoes, onions over fries and rice", price: 38 },
+        { name: "Causa Limeña", description: "Layered potato terrine with avocado and shrimp", price: 22 },
+      ],
+      gallery: [
+        { url: "https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?w=600", caption: "Ceviche" },
       ],
     },
   ];
 
-  for (const chef of chefData) {
-    const hash = await bcrypt.hash("chef123", 12);
+  const chefProfiles: { id: string; name: string }[] = [];
+
+  for (const chef of chefSeedData) {
     const user = await prisma.user.upsert({
       where: { email: chef.email },
       update: {},
       create: {
         email: chef.email,
-        passwordHash: hash,
+        passwordHash: pw,
         name: chef.name,
         role: "CHEF",
+        referralCode: chef.name.split(" ")[0].toUpperCase() + "2025",
       },
     });
 
-    await prisma.chefProfile.upsert({
+    const profile = await prisma.chefProfile.upsert({
       where: { userId: user.id },
       update: {},
       create: {
         userId: user.id,
-        servSafeCertNumber: `SS-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-        servSafeCertExpiry: new Date("2027-12-31"),
-        generalLiabilityPolicy: `GL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-        generalLiabilityExpiry: new Date("2027-06-30"),
-        productLiabilityPolicy: `PL-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-        productLiabilityExpiry: new Date("2027-06-30"),
         bio: chef.bio,
         cuisineType: chef.cuisineType,
         specialtyDish: chef.specialtyDish,
         hourlyRate: chef.hourlyRate,
-        isApproved: chef.bgCheckStatus === "CLEARED",
+        isApproved: chef.isApproved,
+        isActive: true,
         tier: chef.tier,
         completedJobs: chef.completedJobs,
-        bgCheckConsent: chef.bgCheckConsent,
+
+        // Certifications (sample data)
+        servSafeCertNumber: `SS-${chef.name.split(" ")[0].toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        servSafeCertExpiry: new Date("2027-12-31"),
+        generalLiabilityPolicy: `GL-${Math.floor(100000 + Math.random() * 900000)}`,
+        generalLiabilityExpiry: new Date("2027-06-30"),
+        productLiabilityPolicy: `PL-${Math.floor(100000 + Math.random() * 900000)}`,
+        productLiabilityExpiry: new Date("2027-06-30"),
+
+        // Background check
+        bgCheckConsent: true,
         bgCheckStatus: chef.bgCheckStatus,
-        bgCheckFullName: chef.bgCheckFullName,
-        bgCheckDOB: chef.bgCheckDOB,
-        bgCheckSSNLast4: chef.bgCheckSSNLast4,
-        bgCheckSubmittedAt: chef.bgCheckSubmittedAt,
-        bgCheckClearedAt: chef.bgCheckClearedAt,
-        vehicleLicensePlate: chef.vehicleLicensePlate,
-        vehicleMake: chef.vehicleMake,
-        vehicleModel: chef.vehicleModel,
-        vehicleColor: chef.vehicleColor,
-        driversLicenseNumber: chef.driversLicenseNumber,
-        willTravelToHomes: chef.willTravelToHomes,
+        bgCheckFullName: chef.name,
+        bgCheckDOB: "1985-01-15",
+        bgCheckSSNLast4: String(Math.floor(1000 + Math.random() * 9000)),
+        bgCheckSubmittedAt: chef.bgCheckStatus !== "NOT_SUBMITTED" ? new Date("2025-01-15") : null,
+        bgCheckClearedAt: chef.bgCheckStatus === "CLEAR" ? new Date("2025-01-20") : null,
+        bgCheckAddress: "123 Sample St, Lansing, MI 48912",
         verificationStatus: chef.verificationStatus,
         idVerificationStatus: chef.idVerificationStatus,
-        governmentIdType: chef.governmentIdType,
-        governmentIdUrl: chef.governmentIdUrl,
-        selfieUrl: chef.selfieUrl,
-        fcraConsentSignature: chef.fcraConsentSignature,
-        fcraConsentTimestamp: chef.fcraConsentTimestamp,
-        bgCheckAddress: chef.bgCheckAddress,
-        termsAcceptedAt: chef.termsAcceptedAt,
-        antiPoachingAcceptedAt: chef.antiPoachingAcceptedAt,
-        specials: {
-          create: chef.specials,
-        },
+        governmentIdType: "DRIVERS_LICENSE",
+        governmentIdUrl: "/uploads/sample-id.jpg",
+        selfieUrl: "/uploads/sample-selfie.jpg",
+        fcraConsentSignature: chef.name,
+        fcraConsentTimestamp: new Date("2025-01-10"),
+
+        // Vehicle
+        vehicleLicensePlate: chef.vehicle?.plate ?? null,
+        vehicleMake: chef.vehicle?.make ?? null,
+        vehicleModel: chef.vehicle?.model ?? null,
+        vehicleColor: chef.vehicle?.color ?? null,
+        driversLicenseNumber: chef.vehicle ? `DL-${Math.floor(1000000 + Math.random() * 9000000)}` : null,
+        willTravelToHomes: true,
+
+        // Terms
+        termsAcceptedAt: chef.isApproved ? new Date("2025-01-10") : null,
+        antiPoachingAcceptedAt: chef.isApproved ? new Date("2025-01-10") : null,
+
+        // Phase 10 fields
+        insuranceStatus: chef.insuranceStatus,
+        insuranceProvider: chef.insuranceProvider,
+        insurancePolicyNumber: chef.insurancePolicyNumber,
+        insuranceVerified: chef.insuranceStatus === "verified",
+        insuranceVerifiedAt: chef.insuranceStatus === "verified" ? new Date("2025-02-01") : null,
+        insuranceDocUrl: chef.insuranceStatus !== "missing" ? "/uploads/sample-insurance.pdf" : null,
+        insuranceExpiry: chef.insuranceStatus === "expired" ? new Date("2025-01-01") : chef.insuranceStatus === "verified" ? new Date("2026-06-30") : null,
+        trustScore: chef.trustScore,
+        boostActive: chef.boostActive,
+        boostExpiresAt: chef.boostExpiresAt,
+        activationStatus: chef.activationStatus,
+
+        // Specials
+        specials: { create: chef.specials },
+
+        // Gallery
+        galleryImages: chef.gallery.length > 0 ? {
+          create: chef.gallery.map((g, i) => ({ imageUrl: g.url, caption: g.caption, sortOrder: i })),
+        } : undefined,
       },
     });
 
-    console.log("Chef created:", chef.name);
+    chefProfiles.push({ id: profile.id, name: chef.name });
+    console.log(`✅ Chef: ${chef.name} (${chef.tier}, trust: ${chef.trustScore}, insurance: ${chef.insuranceStatus}, activation: ${chef.activationStatus})`);
   }
 
-  // Create a sample completed booking + review so there's data to see
-  const chefProfile = await prisma.chefProfile.findFirst({
-    where: { user: { email: "marco@example.com" } },
-  });
+  // ── Bookings, Reviews, Messages, Tips ──
+  const activeChefs = chefProfiles.filter((_, i) => chefSeedData[i].isApproved);
 
-  if (chefProfile) {
+  // Completed bookings with reviews
+  const completedBookings = [
+    { clientIdx: 0, chefIdx: 0, date: "2025-05-10", time: "19:00", guests: 4, area: "Beverly Hills", subtotal: 340, rating: 5, comment: "Absolutely incredible! Marco's truffle ravioli was the best I've ever had. The whole evening felt like dining in Tuscany." },
+    { clientIdx: 1, chefIdx: 0, date: "2025-05-15", time: "18:30", guests: 6, area: "Pasadena", subtotal: 510, rating: 5, comment: "Marco cooked a 5-course Italian feast for our anniversary. Every dish was perfection. Can't wait to book again!" },
+    { clientIdx: 0, chefIdx: 1, date: "2025-04-22", time: "19:30", guests: 2, area: "Santa Monica", subtotal: 440, rating: 5, comment: "Aiko's omakase was a life-changing experience. Each piece of sushi was a work of art. Worth every penny." },
+    { clientIdx: 2, chefIdx: 1, date: "2025-05-01", time: "18:00", guests: 8, area: "Bel Air", subtotal: 1200, rating: 5, comment: "The kaiseki dinner for our dinner party was extraordinary. Aiko is a true artist." },
+    { clientIdx: 1, chefIdx: 2, date: "2025-04-28", time: "17:00", guests: 10, area: "East Lansing", subtotal: 400, rating: 4, comment: "Carlos brought the party! His mole was incredible and the tacos were a huge hit. One star off only because he ran a bit late." },
+    { clientIdx: 3, chefIdx: 2, date: "2025-05-05", time: "19:00", guests: 4, area: "Downtown Lansing", subtotal: 260, rating: 5, comment: "Best Mexican food I've had outside of Mexico City. The mole negro was unbelievable." },
+    { clientIdx: 0, chefIdx: 3, date: "2025-05-08", time: "18:00", guests: 6, area: "Okemos", subtotal: 450, rating: 4, comment: "Priya's biryani was absolutely authentic. The spice layering was complex and beautiful. Slightly too spicy for one guest." },
+    { clientIdx: 2, chefIdx: 4, date: "2025-04-15", time: "19:30", guests: 2, area: "Beverly Hills", subtotal: 520, rating: 5, comment: "Antoine prepared the most romantic French dinner. The duck confit was sublime and the crème brûlée was perfect." },
+    { clientIdx: 3, chefIdx: 4, date: "2025-05-12", time: "18:00", guests: 4, area: "Grosse Pointe", subtotal: 680, rating: 5, comment: "Michelin-star quality in our own home. Antoine is a master of his craft. The beef bourguignon was heavenly." },
+    { clientIdx: 1, chefIdx: 4, date: "2025-05-18", time: "19:00", guests: 6, area: "Ann Arbor", subtotal: 780, rating: 4, comment: "Outstanding French cuisine for our corporate dinner. Antoine was professional and the food was incredible." },
+  ];
+
+  for (const b of completedBookings) {
+    const platformFee = Math.round(b.subtotal * 0.30 * 100) / 100;
+    const clientServiceFee = Math.round(b.subtotal * 0.08 * 100) / 100;
+    const total = Math.round((b.subtotal + clientServiceFee) * 100) / 100;
+
     const booking = await prisma.booking.create({
       data: {
-        clientId: client.id,
-        chefProfileId: chefProfile.id,
-        date: new Date("2026-03-20"),
-        time: "19:00",
-        guestCount: 4,
-        address: "123 Main Street, Beverly Hills, CA 90210",
-        generalArea: "Beverly Hills",
-        subtotal: 130,
-        platformFee: 39,
-        total: 169,
+        clientId: clients[b.clientIdx].id,
+        chefProfileId: activeChefs[b.chefIdx].id,
+        date: new Date(b.date),
+        time: b.time,
+        guestCount: b.guests,
+        address: `${100 + b.clientIdx * 100} Sample Street, ${b.area}, MI 48912`,
+        generalArea: b.area,
+        subtotal: b.subtotal,
+        platformFee,
+        clientServiceFee,
+        total,
         status: "COMPLETED",
         jobStatus: "COMPLETED",
-        items: {
-          create: [
-            { name: "Truffle Ravioli", price: 45, quantity: 1 },
-          ],
-        },
+        paymentStatus: "RELEASED",
+        payoutStatus: "PAID",
       },
     });
 
     await prisma.review.create({
       data: {
         bookingId: booking.id,
-        clientId: client.id,
-        chefProfileId: chefProfile.id,
-        rating: 5,
-        comment: "Absolutely incredible experience! Marco's truffle ravioli was the best I've ever had. Worth every penny.",
+        clientId: clients[b.clientIdx].id,
+        chefProfileId: activeChefs[b.chefIdx].id,
+        rating: b.rating,
+        comment: b.comment,
       },
     });
-    console.log("Sample booking + review created (Jane → Marco)");
+  }
+  console.log(`✅ ${completedBookings.length} completed bookings with reviews`);
 
-    // Create a pending booking from test user
+  // Upcoming / active bookings
+  const upcomingBookings = [
+    { clientIdx: 0, chefIdx: 0, date: new Date(Date.now() + 3 * 86400000), time: "19:00", guests: 4, area: "Beverly Hills", subtotal: 340, status: "CONFIRMED", jobStatus: "SCHEDULED" },
+    { clientIdx: 1, chefIdx: 1, date: new Date(Date.now() + 5 * 86400000), time: "18:30", guests: 8, area: "Bel Air", subtotal: 1200, status: "CONFIRMED", jobStatus: "SCHEDULED" },
+    { clientIdx: 2, chefIdx: 4, date: new Date(Date.now() + 7 * 86400000), time: "19:30", guests: 2, area: "Downtown Lansing", subtotal: 520, status: "CONFIRMED", jobStatus: "SCHEDULED" },
+    { clientIdx: 3, chefIdx: 2, date: new Date(Date.now() + 1 * 86400000), time: "17:00", guests: 12, area: "East Lansing", subtotal: 650, status: "PENDING", jobStatus: "SCHEDULED" },
+    { clientIdx: 0, chefIdx: 4, date: new Date(Date.now() + 10 * 86400000), time: "18:00", guests: 6, area: "Ann Arbor", subtotal: 780, status: "PENDING", jobStatus: "SCHEDULED" },
+  ];
+
+  for (const b of upcomingBookings) {
+    const platformFee = Math.round(b.subtotal * 0.30 * 100) / 100;
+    const clientServiceFee = Math.round(b.subtotal * 0.08 * 100) / 100;
+    const total = Math.round((b.subtotal + clientServiceFee) * 100) / 100;
+
     await prisma.booking.create({
       data: {
-        clientId: client2.id,
-        chefProfileId: chefProfile.id,
-        date: new Date("2026-04-05"),
-        time: "18:30",
-        guestCount: 6,
-        address: "456 Oak Avenue, Pasadena, CA 91101",
-        generalArea: "Pasadena",
-        subtotal: 170,
-        platformFee: 51,
-        total: 221,
-        status: "CONFIRMED",
-        jobStatus: "SCHEDULED",
-        items: {
-          create: [
-            { name: "Osso Buco Milanese", price: 55, quantity: 1 },
-          ],
-        },
+        clientId: clients[b.clientIdx].id,
+        chefProfileId: activeChefs[b.chefIdx].id,
+        date: b.date,
+        time: b.time,
+        guestCount: b.guests,
+        address: `${200 + b.clientIdx * 100} Oak Avenue, ${b.area}, MI 48912`,
+        generalArea: b.area,
+        subtotal: b.subtotal,
+        platformFee,
+        clientServiceFee,
+        total,
+        status: b.status,
+        jobStatus: b.jobStatus,
       },
     });
-    console.log("Pending booking created (Test User → Marco)");
+  }
+  console.log(`✅ ${upcomingBookings.length} upcoming bookings`);
+
+  // Cancelled booking
+  const cancelledBooking = await prisma.booking.create({
+    data: {
+      clientId: clients[2].id,
+      chefProfileId: activeChefs[0].id,
+      date: new Date(Date.now() + 2 * 86400000),
+      time: "18:00",
+      guestCount: 4,
+      address: "300 Elm St, Lansing, MI 48912",
+      generalArea: "Lansing",
+      subtotal: 340,
+      platformFee: 102,
+      clientServiceFee: 27.20,
+      total: 367.20,
+      status: "CANCELLED",
+      cancelledAt: new Date(),
+      cancelledBy: clients[2].id,
+      cancellationFeePercent: 0,
+      cancellationFee: 0,
+      refundAmount: 367.20,
+    },
+  });
+  console.log("✅ 1 cancelled booking");
+
+  // ── Messages (sample conversation) ──
+  const firstUpcoming = await prisma.booking.findFirst({
+    where: { status: "CONFIRMED" },
+    include: { chefProfile: { include: { user: true } } },
+  });
+  if (firstUpcoming) {
+    const chefUserId = firstUpcoming.chefProfile.user.id;
+    await prisma.message.createMany({
+      data: [
+        { bookingId: firstUpcoming.id, senderId: firstUpcoming.clientId, receiverId: chefUserId, content: "Hi! I'm so excited for our dinner. Any dietary questions?" },
+        { bookingId: firstUpcoming.id, senderId: chefUserId, receiverId: firstUpcoming.clientId, content: "Hello! Can't wait either. Are there any allergies I should know about?" },
+        { bookingId: firstUpcoming.id, senderId: firstUpcoming.clientId, receiverId: chefUserId, content: "One guest is allergic to shellfish, otherwise we're good!" },
+        { bookingId: firstUpcoming.id, senderId: chefUserId, receiverId: firstUpcoming.clientId, content: "Noted! I'll adjust the menu. I'll bring everything fresh the day of. See you soon!" },
+      ],
+    });
+    console.log("✅ Sample messages on confirmed booking");
   }
 
-  console.log("Seeding complete!");
+  // ── Tips ──
+  const completedWithReview = await prisma.booking.findMany({
+    where: { status: "COMPLETED" },
+    take: 4,
+  });
+  for (const b of completedWithReview) {
+    await prisma.tip.create({
+      data: {
+        bookingId: b.id,
+        amount: Math.round((b.subtotal * (0.15 + Math.random() * 0.10)) * 100) / 100,
+        message: ["Thank you so much!", "You're amazing!", "Best meal ever!", "Can't wait to book again!"][Math.floor(Math.random() * 4)],
+      },
+    });
+  }
+  console.log("✅ Tips on completed bookings");
+
+  // ── Notifications ──
+  await prisma.notification.createMany({
+    data: [
+      { userId: clients[0].id, type: "BOOKING_CONFIRMED", title: "Booking Confirmed!", body: "Your booking with Marco Rossi has been confirmed for next week.", isRead: true },
+      { userId: clients[0].id, type: "TIP", title: "Tip Sent", body: "Your tip of $51.00 was sent to Marco Rossi.", isRead: true },
+      { userId: clients[0].id, type: "BOOKING_CREATED", title: "New Booking", body: "Your booking with Antoine Beaumont is pending confirmation.", isRead: false },
+      { userId: clients[1].id, type: "BOOKING_CONFIRMED", title: "Booking Confirmed!", body: "Your booking with Aiko Tanaka has been confirmed.", isRead: false },
+      { userId: admin.id, type: "BG_CHECK_UPDATE", title: "Background Check Complete", body: "Background check cleared for Marco Rossi.", isRead: true },
+      { userId: admin.id, type: "EXPIRY_WARNING", title: "Insurance Expiring", body: "Elena Vasquez's insurance policy has expired.", isRead: false },
+    ],
+  });
+  console.log("✅ Sample notifications");
+
+  // ── Audit Log entries ──
+  await prisma.auditLog.createMany({
+    data: [
+      { adminUserId: admin.id, action: "APPROVE_CHEF", targetType: "CHEF", targetId: chefProfiles[0].id, details: JSON.stringify({ chef: "Marco Rossi", reason: "All checks passed" }) },
+      { adminUserId: admin.id, action: "APPROVE_CHEF", targetType: "CHEF", targetId: chefProfiles[1].id, details: JSON.stringify({ chef: "Aiko Tanaka", reason: "All checks passed" }) },
+      { adminUserId: admin.id, action: "OVERRIDE_TIER", targetType: "CHEF", targetId: chefProfiles[1].id, details: JSON.stringify({ chef: "Aiko Tanaka", from: "CHEF", to: "MASTER_CHEF" }) },
+      { adminUserId: admin.id, action: "CLEAR_BG_CHECK", targetType: "CHEF", targetId: chefProfiles[2].id, details: JSON.stringify({ chef: "Carlos Rivera" }) },
+    ],
+  });
+  console.log("✅ Audit log entries");
+
+  // ── Incident Report ──
+  await prisma.incidentReport.create({
+    data: {
+      reporterId: clients[3].id,
+      reportedUserId: (await prisma.user.findFirst({ where: { email: "elena@example.com" } }))!.id,
+      type: "NO_SHOW",
+      severity: "HIGH",
+      description: "Chef did not arrive for the scheduled booking and was unresponsive to messages for 2 hours.",
+      status: "RESOLVED",
+      adminNotes: "Chef confirmed personal emergency. Insurance policy also found expired. Account restricted pending compliance.",
+      resolvedAt: new Date("2025-05-20"),
+      resolvedBy: admin.id,
+    },
+  });
+  console.log("✅ Sample incident report");
+
+  // ── Chef Availability (next 14 days for Marco) ──
+  const marcoProfile = chefProfiles[0];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(Date.now() + i * 86400000);
+    // Block Mondays and Tuesdays
+    if (d.getDay() === 1 || d.getDay() === 2) {
+      await prisma.chefAvailability.create({
+        data: { chefProfileId: marcoProfile.id, date: d, isBlocked: true, note: "Day off" },
+      });
+    }
+  }
+  console.log("✅ Chef availability (Marco: Mon/Tue blocked)");
+
+  // ── Favorite Chefs ──
+  await prisma.favoriteChef.createMany({
+    data: [
+      { userId: clients[0].id, chefProfileId: chefProfiles[0].id },
+      { userId: clients[0].id, chefProfileId: chefProfiles[1].id },
+      { userId: clients[0].id, chefProfileId: chefProfiles[4].id },
+      { userId: clients[1].id, chefProfileId: chefProfiles[1].id },
+      { userId: clients[1].id, chefProfileId: chefProfiles[4].id },
+      { userId: clients[2].id, chefProfileId: chefProfiles[4].id },
+    ],
+  });
+  console.log("✅ Client favorites");
+
+  // ── Referrals ──
+  await prisma.referral.create({
+    data: {
+      referrerId: clients[0].id,
+      referredUserId: clients[3].id,
+      type: "CLIENT_REFERRAL",
+      status: "CREDITED",
+      creditAmount: 25,
+    },
+  });
+  await prisma.user.update({
+    where: { id: clients[0].id },
+    data: { referralCredits: 25 },
+  });
+  console.log("✅ Sample referral (Jane → Mike, $25 credit)");
+
+  // ── Food Truck ──
+  const truck = await prisma.foodTruck.create({
+    data: {
+      ownerId: (await prisma.user.findFirst({ where: { email: "carlos@example.com" } }))!.id,
+      name: "Carlos's Taco Truck",
+      description: "Authentic Oaxacan street food on wheels. Mole, tacos, elote, and more!",
+      cuisineType: "Mexican Street Food",
+      location: "Downtown Lansing Farmers Market",
+      schedule: "Thu-Sun 11am-8pm",
+      priceRange: "$$",
+      isFeatured: true,
+      isActive: true,
+      latitude: 42.7325,
+      longitude: -84.5555,
+      phone: "555-0200",
+      menuItems: {
+        create: [
+          { name: "Street Tacos (3)", description: "Choice of carne asada, al pastor, or carnitas", price: 12 },
+          { name: "Mole Negro Plate", description: "Chicken in Oaxacan mole with rice and beans", price: 16 },
+          { name: "Elote", description: "Grilled corn with cotija, lime, and chili", price: 6 },
+          { name: "Horchata", description: "Housemade rice milk with cinnamon", price: 4 },
+        ],
+      },
+    },
+  });
+  console.log("✅ Food truck: Carlos's Taco Truck");
+
+  console.log("\n🎉 Seeding complete! Database is ready.\n");
+  console.log("═══════════════════════════════════════════");
+  console.log("  TEST ACCOUNTS (all password: Password123!)");
+  console.log("═══════════════════════════════════════════");
+  console.log("  Admin:  admin.foodiesservices@gmail.com / RiceBoogers123456!");
+  console.log("  Client: jane@example.com");
+  console.log("  Client: david@example.com");
+  console.log("  Client: sarah@example.com");
+  console.log("  Client: mike@example.com");
+  console.log("  Chef:   marco@example.com  (Master Chef, ★92 trust, boosted)");
+  console.log("  Chef:   aiko@example.com   (Master Chef, ★97 trust, top rated)");
+  console.log("  Chef:   carlos@example.com (Chef, ★78 trust, has food truck)");
+  console.log("  Chef:   priya@example.com  (Chef, ★65 trust, pending insurance)");
+  console.log("  Chef:   antoine@example.com(Master Chef, ★95 trust, boosted)");
+  console.log("  Chef:   sofia@example.com  (Sous Chef, ★42 trust, no insurance)");
+  console.log("  Chef:   kenji@example.com  (Sous Chef, ★15 trust, incomplete)");
+  console.log("  Chef:   elena@example.com  (Chef, ★35 trust, RESTRICTED)");
+  console.log("═══════════════════════════════════════════");
 }
 
 main()

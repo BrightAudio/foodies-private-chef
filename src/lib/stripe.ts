@@ -94,3 +94,50 @@ export async function createDashboardLink(accountId: string): Promise<Stripe.Log
   if (!stripe) throw new Error("Stripe not configured");
   return stripe.accounts.createLoginLink(accountId);
 }
+
+/**
+ * Charge the platform account for a background check cost.
+ * Creates a charge on the platform's own Stripe account (not a connected account).
+ * Used to pay for Stripe Identity verification + Checkr criminal checks from platform revenue.
+ */
+export async function chargePlatformForBgCheck(
+  amountCents: number,
+  chefProfileId: string,
+  description: string
+): Promise<Stripe.Charge | null> {
+  if (!stripe) return null;
+  return stripe.charges.create({
+    amount: amountCents,
+    currency: "usd",
+    description,
+    metadata: {
+      type: "bg_check_cost",
+      chefProfileId,
+      platform: "foodies",
+    },
+  });
+}
+
+/**
+ * Create a PaymentIntent for customer checkout with service fee visible.
+ * Funds flow: Customer pays total (subtotal + service fee) → platform holds in escrow →
+ * on completion: platform fee deducted, chef receives net payout via Connect transfer.
+ */
+export async function createCheckoutPaymentIntent(
+  subtotalCents: number,
+  serviceFeeCents: number,
+  platformFeeCents: number,
+  chefConnectAccountId: string,
+  metadata: Record<string, string>
+): Promise<Stripe.PaymentIntent> {
+  if (!stripe) throw new Error("Stripe not configured");
+  const totalCents = subtotalCents + serviceFeeCents;
+  return stripe.paymentIntents.create({
+    amount: totalCents,
+    currency: "usd",
+    capture_method: "manual", // Escrow: hold until job completion
+    application_fee_amount: platformFeeCents + serviceFeeCents, // Platform keeps platform fee + service fee
+    transfer_data: { destination: chefConnectAccountId },
+    metadata: { ...metadata, serviceFeeCents: String(serviceFeeCents) },
+  });
+}

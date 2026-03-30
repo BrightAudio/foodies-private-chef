@@ -12,7 +12,8 @@
     "db:studio": "npx prisma studio",
     "postinstall": "npx prisma generate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "next lint"
   },
   "keywords": [],
   "author": "",
@@ -45,11 +46,14 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/ioredis": "^4.28.10",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/nodemailer": "^7.0.11",
     "@types/uuid": "^10.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^16.2.1",
     "tsx": "^4.21.0",
     "vitest": "^4.1.2"
   }

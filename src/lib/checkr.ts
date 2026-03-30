@@ -1,5 +1,6 @@
-// Checkr Background Check Integration
-// Phase 2: Real background check API integration
+// Checkr Criminal Background Check Integration
+// FCRA-compliant criminal background checks (~$15/check)
+// Active provider for criminal background screening
 
 const CHECKR_API_KEY = process.env.CHECKR_API_KEY;
 const CHECKR_API_URL = process.env.CHECKR_API_URL || "https://api.checkr.com/v1";

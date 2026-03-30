@@ -8,7 +8,8 @@ import { cacheGet, cacheSet } from "@/lib/redis";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const specialty = searchParams.get("specialty") || undefined;
-  const cuisineType = searchParams.get("cuisineType") || undefined;
+  const cuisineType = searchParams.get("cuisineType") || searchParams.get("cuisine") || undefined;
+  const tier = searchParams.get("tier") || undefined;
   const minRating = Number(searchParams.get("minRating")) || 0;
   const maxPrice = Number(searchParams.get("maxPrice")) || Infinity;
   const sortBy = searchParams.get("sort") || "rating"; // rating | price
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
 
   // Try cache for default browse (no filters)
-  const isDefaultBrowse = !specialty && !cuisineType && minRating === 0 && maxPrice === Infinity && sortBy === "rating" && page === 1;
+  const isDefaultBrowse = !specialty && !cuisineType && !tier && minRating === 0 && maxPrice === Infinity && sortBy === "rating" && page === 1;
   if (isDefaultBrowse) {
     const cached = await cacheGet("chefs:browse:default");
     if (cached) {
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
       isActive: true,
       ...(specialty ? { specialtyDish: { contains: specialty } } : {}),
       ...(cuisineType ? { cuisineType: { contains: cuisineType } } : {}),
+      ...(tier ? { tier } : {}),
       ...(maxPrice < Infinity ? { hourlyRate: { lte: maxPrice } } : {}),
     },
     include: {

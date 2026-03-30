@@ -6,7 +6,9 @@ export const TIERS = {
   SOUS_CHEF: {
     label: "Sous Chef",
     emoji: "🔪",
-    maxRate: 60,
+    minRate: 40,
+    maxRate: 75,
+    description: "Up-and-coming culinary talent ready to impress",
     color: "text-blue-400",
     bgColor: "bg-blue-500/10 border-blue-500/20",
     badgeColor: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
@@ -14,7 +16,9 @@ export const TIERS = {
   CHEF: {
     label: "Chef",
     emoji: "👨‍🍳",
-    maxRate: 125,
+    minRate: 75,
+    maxRate: 120,
+    description: "Experienced professionals with proven track records",
     color: "text-gold",
     bgColor: "bg-gold/10 border-gold/20",
     badgeColor: "bg-gold/10 text-gold border border-gold/20",
@@ -22,7 +26,9 @@ export const TIERS = {
   MASTER_CHEF: {
     label: "Master Chef",
     emoji: "⭐",
-    maxRate: Infinity,
+    minRate: 120,
+    maxRate: 200,
+    description: "Elite culinary artists for extraordinary experiences",
     color: "text-purple-400",
     bgColor: "bg-purple-500/10 border-purple-500/20",
     badgeColor: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
@@ -51,9 +57,21 @@ export function calculateTier(completedJobs: number, avgRating: number): TierKey
   return "SOUS_CHEF";
 }
 
+// Get the rate range for a tier
+export function getRateRange(tier: string): { min: number; max: number } {
+  const t = TIERS[tier as TierKey];
+  return t ? { min: t.minRate, max: t.maxRate } : { min: TIERS.SOUS_CHEF.minRate, max: TIERS.SOUS_CHEF.maxRate };
+}
+
 // Get the max hourly rate for a tier
 export function getMaxRate(tier: string): number {
   return TIERS[tier as TierKey]?.maxRate ?? TIERS.SOUS_CHEF.maxRate;
+}
+
+// Validate that a chef's hourly rate is within their tier range
+export function isRateInTierRange(rate: number, tier: string): boolean {
+  const range = getRateRange(tier);
+  return rate >= range.min && rate <= range.max;
 }
 
 // Get tier display info
