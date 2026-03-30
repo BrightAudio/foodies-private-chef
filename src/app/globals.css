@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark: #0B0B0B;
+  --color-dark-card: #141414;
+  --color-dark-border: #2A2A2A;
+  --color-dark-hover: #1C1C1C;
+  --color-gold: #C8A96A;
+  --color-gold-light: #D4BC8B;
+  --color-gold-dark: #A8884A;
+  --color-cream: #F5F0E8;
+  --color-cream-muted: #B8B0A2;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0B0B0B;
+  color: #F5F0E8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(200, 169, 106, 0.3);
+  color: #F5F0E8;
+}
+
+input, select, textarea {
+  background-color: #141414;
+  border-color: #2A2A2A;
+  color: #F5F0E8;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #6B6B6B;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #C8A96A;
+  box-shadow: 0 0 0 1px rgba(200, 169, 106, 0.3);
+}

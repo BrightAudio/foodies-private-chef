@@ -1,0 +1,101 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getTokenFromRequest, calculateFees } from "@/lib/auth";
+import { stripe, isStripeEnabled } from "@/lib/stripe";
+import { sendBookingCreatedToChef } from "@/lib/email";
+
+// POST /api/payments/create-intent
+// Creates a booking + Stripe PaymentIntent in one step
+export async function POST(req: NextRequest) {
+  const user = getTokenFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isStripeEnabled()) {
+    return NextResponse.json({ error: "Payments not configured" }, { status: 503 });
+  }
+
+  const { chefProfileId, date, time, guestCount, specialRequests, address, items } = await req.json();
+
+  if (!chefProfileId || !date || !time || !guestCount || !address) {
+    return NextResponse.json({ error: "Missing required booking fields" }, { status: 400 });
+  }
+
+  const chef = await prisma.chefProfile.findUnique({
+    where: { id: chefProfileId },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  if (!chef || !chef.isApproved || !chef.isActive) {
+    return NextResponse.json({ error: "Chef not available" }, { status: 404 });
+  }
+
+  // Calculate pricing
+  let subtotal = chef.hourlyRate;
+  const bookingItems: { name: string; price: number; quantity: number }[] = [];
+  if (items && Array.isArray(items)) {
+    for (const item of items) {
+      subtotal += Number(item.price) * (Number(item.quantity) || 1);
+      bookingItems.push({
+        name: item.name,
+        price: Number(item.price),
+        quantity: Number(item.quantity) || 1,
+      });
+    }
+  }
+  const fees = calculateFees(subtotal);
+
+  // Create booking in PENDING status with UNPAID payment
+  const booking = await prisma.booking.create({
+    data: {
+      clientId: user.userId,
+      chefProfileId,
+      date: new Date(date),
+      time,
+      guestCount: Number(guestCount),
+      specialRequests: specialRequests || null,
+      address,
+      subtotal: fees.subtotal,
+      platformFee: fees.platformFee,
+      total: fees.total,
+      paymentStatus: "UNPAID",
+      items: bookingItems.length > 0 ? { create: bookingItems } : undefined,
+    },
+  });
+
+  // Create Stripe PaymentIntent (amount in cents)
+  const paymentIntent = await stripe!.paymentIntents.create({
+    amount: Math.round(fees.total * 100),
+    currency: "usd",
+    metadata: {
+      bookingId: booking.id,
+      chefProfileId,
+      clientId: user.userId,
+    },
+  });
+
+  // Store the PaymentIntent ID
+  await prisma.booking.update({
+    where: { id: booking.id },
+    data: { stripePaymentIntentId: paymentIntent.id },
+  });
+
+  // Send email notification to chef
+  const clientUser = await prisma.user.findUnique({ where: { id: user.userId } });
+  sendBookingCreatedToChef({
+    chefEmail: chef.user.email,
+    chefName: chef.user.name,
+    clientName: clientUser?.name || "A client",
+    date: new Date(date).toLocaleDateString(),
+    time,
+    guestCount: Number(guestCount),
+    total: fees.total,
+    bookingId: booking.id,
+  }).catch(console.error);
+
+  return NextResponse.json({
+    bookingId: booking.id,
+    clientSecret: paymentIntent.client_secret,
+    total: fees.total,
+  });
+}

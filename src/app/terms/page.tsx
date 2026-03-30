@@ -1,0 +1,135 @@
+import Navbar from "@/components/Navbar";
+
+export default function TermsPage() {
+  return (
+    <>
+      <Navbar />
+      <div className="max-w-3xl mx-auto px-4 pt-28 pb-16">
+        <h1 className="text-3xl font-bold mb-2 tracking-tight">Terms of Service</h1>
+        <p className="text-cream-muted mb-8">Foodies — Private Chef Experience Platform</p>
+
+        <div className="space-y-8 text-sm text-cream/90 leading-relaxed">
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">1. Platform Role & Independent Contractors</h2>
+            <p>
+              Foodies operates as a marketplace platform that connects clients seeking private chef experiences
+              with independent culinary professionals. <strong>Chefs on our platform are independent contractors,
+              not employees of Foodies.</strong> Foodies does not employ, supervise, or control the manner in which
+              chefs perform their services.
+            </p>
+            <p className="mt-3">
+              Each chef is solely responsible for the quality, safety, and preparation of all food served during
+              a booking. Clients acknowledge that Foodies does not guarantee, warranty, or endorse any specific
+              chef&apos;s performance or the food they prepare.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">2. Platform Fees & Commission</h2>
+            <p>
+              Foodies charges a platform service fee on each transaction. This fee covers platform operation,
+              payment processing, customer support, background check administration, and insurance verification.
+            </p>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+              <li>Platform fee: up to 30% of the booking total</li>
+              <li>Chefs receive their earnings after the platform fee is deducted</li>
+              <li>All prices displayed to clients include the platform fee</li>
+              <li>Fees are non-negotiable and subject to change with notice</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">3. Non-Circumvention Agreement</h2>
+            <div className="bg-dark-card border border-gold/20 p-5">
+              <p className="font-semibold text-cream mb-2">Important: Please read carefully</p>
+              <p>
+                By using the Foodies platform, both clients and chefs agree not to circumvent the platform
+                to arrange bookings directly. This includes but is not limited to:
+              </p>
+              <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+                <li>Exchanging personal contact information (phone numbers, emails, social media handles)</li>
+                <li>Arranging bookings outside the Foodies platform after being introduced through it</li>
+                <li>Using third-party payment methods to avoid platform fees</li>
+                <li>Soliciting or encouraging off-platform transactions</li>
+              </ul>
+              <p className="mt-4 font-semibold text-gold">
+                Violation of this agreement may result in a penalty of $500 or 25% of the circumvented
+                booking value (whichever is greater), account suspension, and/or permanent ban from the platform.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">4. Food Safety & Liability</h2>
+            <p>
+              All chefs on Foodies are required to hold valid ServSafe certification, general liability insurance,
+              and product liability insurance. However:
+            </p>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+              <li>Chefs are independently responsible for food safety, allergen management, and hygiene</li>
+              <li>Clients must disclose all dietary restrictions and allergies when booking</li>
+              <li>Foodies is not liable for any foodborne illness, allergic reactions, or adverse health effects</li>
+              <li>Chefs carry their own liability insurance for claims arising from their services</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">5. Background Checks & Safety</h2>
+            <p>
+              All chefs must consent to and pass a background check before being approved on the platform.
+              Background checks may include criminal history, sex offender registry, and identity verification.
+            </p>
+            <p className="mt-3">
+              While we take reasonable measures to verify chef identities and backgrounds, no screening process
+              is 100% comprehensive. Clients should exercise their own judgment and take appropriate safety precautions.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">6. Address Privacy & Security</h2>
+            <p>
+              Client addresses are protected and only revealed to the assigned chef when they start the job or
+              within one hour of the scheduled booking time. Before that, chefs see only a general area
+              (city/neighborhood). This protects client privacy while ensuring chefs can navigate to the location.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">7. In-App Messaging</h2>
+            <p>
+              All communication between clients and chefs must occur through the Foodies in-app messaging system.
+              Messages are monitored for safety, and any contact information shared within messages will be
+              automatically filtered. This policy protects both parties and ensures all interactions are documented.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">8. Cancellations & Refunds</h2>
+            <ul className="list-disc list-inside space-y-1 text-cream-muted">
+              <li>Clients may cancel pending bookings at no charge</li>
+              <li>Confirmed bookings may be subject to a cancellation fee</li>
+              <li>Chefs who cancel confirmed bookings may face account penalties</li>
+              <li>Refund requests are handled on a case-by-case basis</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">9. Vehicle Verification</h2>
+            <p>
+              For client safety, all chefs must register their vehicle information (license plate, make, and model)
+              during onboarding. This allows clients to verify the identity of the chef arriving at their home.
+            </p>
+          </section>
+
+          <section className="border-t border-dark-border pt-6">
+            <p className="text-cream-muted text-xs">
+              Last updated: {new Date().toLocaleDateString()}. Foodies reserves the right to modify these terms
+              at any time. Continued use of the platform constitutes acceptance of any changes.
+            </p>
+          </section>
+        </div>
+      </div>
+    </>
+  );
+}

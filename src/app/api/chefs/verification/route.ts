@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getTokenFromRequest } from "@/lib/auth";
+
+// GET /api/chefs/verification — get current chef's verification status
+export async function GET(req: NextRequest) {
+  const user = getTokenFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const profile = await prisma.chefProfile.findUnique({
+    where: { userId: user.userId },
+    select: {
+      verificationStatus: true,
+      bgCheckStatus: true,
+      idVerificationStatus: true,
+      isApproved: true,
+      isActive: true,
+      bgCheckSubmittedAt: true,
+      bgCheckClearedAt: true,
+      fcraConsentTimestamp: true,
+      termsAcceptedAt: true,
+      antiPoachingAcceptedAt: true,
+    },
+  });
+
+  if (!profile) {
+    return NextResponse.json({ error: "No chef profile found" }, { status: 404 });
+  }
+
+  return NextResponse.json(profile);
+}

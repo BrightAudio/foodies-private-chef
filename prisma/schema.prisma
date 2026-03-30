@@ -1,0 +1,320 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          String    @default("CLIENT") // CLIENT | CHEF | ADMIN
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  chefProfile   ChefProfile?
+  bookingsAsClient Booking[] @relation("ClientBookings")
+  reviews       Review[]
+  foodTrucks    FoodTruck[]
+  sentMessages  Message[]  @relation("UserSentMessages")
+  receivedMessages Message[] @relation("UserReceivedMessages")
+  favoriteChefs FavoriteChef[]
+  notifications Notification[]
+}
+
+model ChefProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id])
+
+  // Required certifications
+  servSafeCertNumber    String
+  servSafeCertExpiry    DateTime
+  generalLiabilityPolicy String
+  generalLiabilityExpiry DateTime
+  productLiabilityPolicy String
+  productLiabilityExpiry DateTime
+
+  // Vehicle information
+  vehicleLicensePlate   String?
+  vehicleMake           String?
+  vehicleModel          String?
+  vehicleColor          String?
+
+  // Chef details
+  bio                   String?
+  cuisineType           String?
+  specialtyDish         String
+  profileImageUrl       String?
+  hourlyRate            Float
+  isApproved            Boolean  @default(false)
+  isActive              Boolean  @default(true)
+
+  // Tier system: SOUS_CHEF | CHEF | MASTER_CHEF
+  tier                  String   @default("SOUS_CHEF")
+  completedJobs         Int      @default(0)
+  tierOverride          Boolean  @default(false) // Admin manually set tier
+
+  // Background check & identity verification
+  bgCheckConsent        Boolean  @default(false)
+  bgCheckStatus         String   @default("NOT_SUBMITTED") // NOT_SUBMITTED | PENDING | CLEARED | FAILED
+  bgCheckSubmittedAt    DateTime?
+  bgCheckClearedAt      DateTime?
+  bgCheckFullName       String?
+  bgCheckDOB            String?
+  bgCheckSSNLast4       String?
+  bgCheckAddress        String?
+  bgCheckPreviousAddress String?
+
+  // FCRA consent
+  fcraConsentSignature  String?      // Typed full name as digital signature
+  fcraConsentTimestamp  DateTime?
+  fcraConsentIP         String?      // IP address at time of consent
+
+  // Verification status: NOT_STARTED | INFO_SUBMITTED | IDENTITY_VERIFIED | BG_CHECK_RUNNING | APPROVED | FLAGGED | REJECTED
+  verificationStatus    String   @default("NOT_STARTED")
+
+  // Document uploads (government ID + selfie)
+  governmentIdUrl       String?
+  governmentIdType      String?      // DRIVERS_LICENSE | STATE_ID | PASSPORT
+  selfieUrl             String?
+  idVerificationStatus  String   @default("NOT_SUBMITTED") // NOT_SUBMITTED | PENDING | VERIFIED | FAILED
+
+  // Driver info
+  driversLicenseNumber  String?
+  willTravelToHomes     Boolean  @default(true)
+
+  // Anti-poaching terms
+  termsAcceptedAt       DateTime?
+  antiPoachingAcceptedAt DateTime?
+
+  // Stripe Connect (payouts)
+  stripeConnectAccountId String?    // Stripe Connect account ID for payouts
+  stripeConnectOnboarded Boolean @default(false)
+
+  // External BG check integration
+  bgCheckExternalId     String?    // ID from Checkr/Sterling
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  specials              ChefSpecial[]
+  bookings              Booking[]    @relation("ChefBookings")
+  reviews               Review[]
+  consentLogs           ConsentLog[]
+  galleryImages         ChefGalleryImage[]
+  availability          ChefAvailability[]
+  favoritedBy           FavoriteChef[]
+}
+
+model ConsentLog {
+  id              String      @id @default(uuid())
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  consentType     String      // FCRA | BACKGROUND_CHECK | TERMS | ANTI_POACHING
+  consentText     String      // The exact text shown to user
+  signature       String      // Typed name as digital signature
+  ipAddress       String?
+  userAgent       String?
+  timestamp       DateTime    @default(now())
+}
+
+model ChefSpecial {
+  id              String      @id @default(uuid())
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  name            String
+  description     String
+  price           Float    @default(0)
+  imageUrl        String?
+  createdAt       DateTime    @default(now())
+}
+
+model Booking {
+  id              String      @id @default(uuid())
+  clientId        String
+  client          User        @relation("ClientBookings", fields: [clientId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation("ChefBookings", fields: [chefProfileId], references: [id])
+
+  date            DateTime
+  time            String
+  guestCount      Int
+  specialRequests String?
+  address         String
+  generalArea     String?   // e.g. "Downtown Lansing" — shown before address reveal
+
+  // Job tracking
+  jobStatus       String    @default("SCHEDULED") // SCHEDULED | EN_ROUTE | ARRIVED | IN_PROGRESS | COMPLETED
+  addressRevealedAt DateTime?
+
+  // Pricing
+  subtotal        Float       // What the chef charges
+  platformFee     Float       // 30% commission
+  total           Float       // What client pays
+
+  // Payment
+  stripePaymentIntentId String?
+  paymentStatus         String  @default("UNPAID") // UNPAID | PAID | REFUNDED
+
+  // Cancellation
+  cancelledAt           DateTime?
+  cancelledBy           String?    // userId who cancelled
+  cancellationFeePercent Float?    // 0, 50, or 100
+  cancellationFee       Float?     // Actual fee charged
+  refundAmount          Float?     // Amount refunded to client
+
+  status          String      @default("PENDING") // PENDING | CONFIRMED | COMPLETED | CANCELLED
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  review          Review?
+  items           BookingItem[]
+  messages        Message[]
+  tip             Tip?
+}
+
+model BookingItem {
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  name        String
+  price       Float
+  quantity    Int      @default(1)
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  senderId    String
+  sender      User     @relation("UserSentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("UserReceivedMessages", fields: [receiverId], references: [id])
+  content     String
+  isFiltered  Boolean  @default(false) // flagged by anti-poaching filter
+  createdAt   DateTime @default(now())
+}
+
+model Review {
+  id              String      @id @default(uuid())
+  bookingId       String      @unique
+  booking         Booking     @relation(fields: [bookingId], references: [id])
+  clientId        String
+  client          User        @relation(fields: [clientId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  rating          Int         // 1-5 stars
+  comment         String?
+  createdAt       DateTime    @default(now())
+}
+
+model FoodTruck {
+  id              String   @id @default(uuid())
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id])
+  name            String
+  description     String
+  cuisineType     String
+  imageUrl        String?
+  location        String   // Current location / usual area
+  schedule        String?  // Operating hours / days
+  priceRange      String   @default("$$") // $ | $$ | $$$
+  isFeatured      Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  latitude        Float?
+  longitude       Float?
+  phone           String?
+  website         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  menuItems       FoodTruckMenuItem[]
+}
+
+model FoodTruckMenuItem {
+  id            String    @id @default(uuid())
+  foodTruckId   String
+  foodTruck     FoodTruck @relation(fields: [foodTruckId], references: [id])
+  name          String
+  description   String?
+  price         Float
+  imageUrl      String?
+  isAvailable   Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+}
+
+// Chef gallery photos (#9)
+model ChefGalleryImage {
+  id            String      @id @default(uuid())
+  chefProfileId String
+  chefProfile   ChefProfile @relation(fields: [chefProfileId], references: [id])
+  imageUrl      String
+  caption       String?
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+}
+
+// Chef availability / blackout dates (#8, #14)
+model ChefAvailability {
+  id            String      @id @default(uuid())
+  chefProfileId String
+  chefProfile   ChefProfile @relation(fields: [chefProfileId], references: [id])
+  date          DateTime
+  isBlocked     Boolean     @default(true) // true = unavailable, false = explicitly available
+  note          String?
+  createdAt     DateTime    @default(now())
+}
+
+// Client favorites (#13)
+model FavoriteChef {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  chefProfileId String
+  chefProfile   ChefProfile @relation(fields: [chefProfileId], references: [id])
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, chefProfileId])
+}
+
+// Tips (#15)
+model Tip {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  amount      Float
+  message     String?
+  createdAt   DateTime @default(now())
+}
+
+// Real-time notifications (#6)
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  type        String   // BOOKING_CREATED | BOOKING_CONFIRMED | BOOKING_CANCELLED | MESSAGE | TIP | BG_CHECK_UPDATE | EXPIRY_WARNING
+  title       String
+  body        String
+  data        String?  // JSON metadata (bookingId, etc.)
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// Audit log (#16)
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  action      String   // APPROVE_CHEF | REJECT_CHEF | CLEAR_BG_CHECK | FAIL_BG_CHECK | OVERRIDE_TIER | DEACTIVATE | REACTIVATE | FULL_APPROVAL
+  targetType  String   // CHEF | BOOKING | USER | TRUCK
+  targetId    String
+  details     String?  // JSON with before/after values
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}

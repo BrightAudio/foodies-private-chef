@@ -1,0 +1,363 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import StarRating from "@/components/StarRating";
+import StarInput from "@/components/StarInput";
+
+interface Booking {
+  id: string;
+  date: string;
+  time: string;
+  guestCount: number;
+  address: string;
+  generalArea: string | null;
+  subtotal: number;
+  platformFee: number;
+  total: number;
+  status: string;
+  jobStatus: string;
+  addressRevealedAt: string | null;
+  paymentStatus: string;
+  chefProfileId: string;
+  chefProfile: {
+    id: string;
+    specialtyDish: string;
+    user: { name: string };
+  };
+  items: { name: string; price: number; quantity: number }[];
+  review: { rating: number; comment: string | null } | null;
+  tip: { amount: number; message: string | null } | null;
+}
+
+export default function ClientBookings() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [tippingId, setTippingId] = useState<string | null>(null);
+  const [tipAmount, setTipAmount] = useState("");
+  const [tipMessage, setTipMessage] = useState("");
+  const [cancelPreview, setCancelPreview] = useState<{ id: string; feePercent: number; fee: number; refundAmount: number; policy: string } | null>(null);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) { window.location.href = "/login"; return; }
+    const res = await fetch("/api/bookings?limit=50", { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    setBookings(data.bookings || data);
+    setLoading(false);
+  };
+
+  const cancelBooking = async (id: string) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/bookings/${id}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setCancelPreview(null);
+      fetchBookings();
+    }
+  };
+
+  const previewCancel = async (id: string) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`/api/bookings/${id}/cancel`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setCancelPreview({ id, ...data });
+      }
+    } catch { /* ignore */ }
+  };
+
+  const submitTip = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!tipAmount || Number(tipAmount) <= 0) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/tips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bookingId, amount: Number(tipAmount), message: tipMessage || undefined }),
+      });
+      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      setTippingId(null);
+      setTipAmount("");
+      setTipMessage("");
+      fetchBookings();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitReview = async (bookingId: string, chefProfileId: string) => {
+    const token = localStorage.getItem("token");
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/chefs/${chefProfileId}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bookingId, rating: reviewRating, comment: reviewComment }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error);
+        return;
+      }
+      setReviewingId(null);
+      setReviewRating(5);
+      setReviewComment("");
+      fetchBookings();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const statusColors: Record<string, string> = {
+    PENDING: "bg-gold/10 text-gold",
+    CONFIRMED: "bg-blue-500/10 text-blue-400",
+    COMPLETED: "bg-emerald-500/10 text-emerald-400",
+    CANCELLED: "bg-red-500/10 text-red-400",
+  };
+
+  const jobStatusMessages: Record<string, string> = {
+    SCHEDULED: "Your chef will be on their way soon",
+    EN_ROUTE: "🚗 Your chef is on the way!",
+    ARRIVED: "✅ Your chef has arrived",
+    IN_PROGRESS: "🍳 Your chef is cooking",
+    COMPLETED: "✨ Experience complete",
+  };
+
+  return (
+    <>
+      <Navbar />
+      <div className="max-w-4xl mx-auto px-4 pt-28 pb-16">
+        <h1 className="text-3xl font-bold mb-6 tracking-tight">My Bookings</h1>
+
+        {loading ? (
+          <p className="text-cream-muted">Loading...</p>
+        ) : bookings.length === 0 ? (
+          <div className="text-center py-16 bg-dark-card border border-dark-border">
+            <p className="text-cream-muted text-lg mb-4">No bookings yet.</p>
+            <Link href="/browse" className="text-gold font-medium hover:text-gold-light transition-colors">
+              Browse Chefs →
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {bookings.map((b) => (
+              <div key={b.id} className="bg-dark-card border border-dark-border p-6">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <Link
+                      href={`/chef/${b.chefProfileId}`}
+                      className="font-semibold text-lg hover:text-gold transition-colors"
+                    >
+                      Chef {b.chefProfile.user.name}
+                    </Link>
+                    <p className="text-sm text-cream-muted">
+                      {new Date(b.date).toLocaleDateString()} at {b.time} · {b.guestCount} guests
+                    </p>
+                    {b.status === "CONFIRMED" && b.jobStatus && b.jobStatus !== "SCHEDULED" && (
+                      <p className="text-sm font-semibold mt-1 text-gold">
+                        {jobStatusMessages[b.jobStatus] || b.jobStatus}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-3 py-1 text-xs font-bold tracking-wider ${statusColors[b.status]}`}>
+                      {b.status}
+                    </span>
+                    {b.paymentStatus !== "UNPAID" && (
+                      <span className={`inline-block px-2 py-0.5 text-xs font-bold tracking-wider mt-1 ${
+                        b.paymentStatus === "PAID" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                        b.paymentStatus === "REFUNDED" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                        "bg-gold/10 text-gold border border-gold/20"
+                      }`}>
+                        {b.paymentStatus}
+                      </span>
+                    )}
+                    <p className="text-lg font-bold mt-1 text-gold">${b.total}</p>
+                  </div>
+                </div>
+
+                {b.items.length > 0 && (
+                  <p className="text-sm text-cream-muted mb-3">
+                    {b.items.map((i) => i.name).join(", ")}
+                  </p>
+                )}
+
+                {/* Review */}
+                {b.review && (
+                  <div className="bg-dark border border-dark-border p-4 mb-3">
+                    <StarRating rating={b.review.rating} size="sm" />
+                    {b.review.comment && <p className="text-sm text-cream-muted mt-1">{b.review.comment}</p>}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 flex-wrap items-center">
+                  {(b.status === "PENDING" || b.status === "CONFIRMED") && (
+                    <button
+                      onClick={() => previewCancel(b.id)}
+                      className="text-red-400 text-sm font-medium hover:text-red-300 transition-colors"
+                    >
+                      Cancel Booking
+                    </button>
+                  )}
+                  {b.status === "COMPLETED" && !b.review && (
+                    <button
+                      onClick={() => setReviewingId(b.id)}
+                      className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
+                    >
+                      Leave a Review
+                    </button>
+                  )}
+                  {b.status === "COMPLETED" && !b.tip && (
+                    <button
+                      onClick={() => setTippingId(b.id)}
+                      className="border border-gold/30 text-gold px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold/10 transition-colors"
+                    >
+                      💰 Leave a Tip
+                    </button>
+                  )}
+                  {b.tip && (
+                    <span className="text-sm text-emerald-400">💰 Tipped ${b.tip.amount}</span>
+                  )}
+                  {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
+                    <a
+                      href={`/messages/${b.id}`}
+                      className="border border-dark-border px-4 py-2 text-sm font-medium text-cream-muted hover:border-gold/30 hover:text-cream transition-colors"
+                    >
+                      💬 Message Chef
+                    </a>
+                  )}
+                </div>
+
+                {/* Cancel Fee Preview */}
+                {cancelPreview && cancelPreview.id === b.id && (
+                  <div className="mt-4 bg-dark border border-red-500/20 p-6 space-y-3">
+                    <h4 className="font-semibold text-red-400">Cancellation Policy</h4>
+                    <p className="text-sm text-cream-muted">{cancelPreview.policy}</p>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-[10px] text-cream-muted/60 uppercase tracking-wider">Fee</p>
+                        <p className="text-lg font-bold text-red-400">{cancelPreview.feePercent}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-cream-muted/60 uppercase tracking-wider">Charge</p>
+                        <p className="text-lg font-bold text-red-400">${cancelPreview.fee.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-cream-muted/60 uppercase tracking-wider">Refund</p>
+                        <p className="text-lg font-bold text-emerald-400">${cancelPreview.refundAmount.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => cancelBooking(b.id)}
+                        className="bg-red-500/10 text-red-400 px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-red-500/20 transition-colors"
+                      >
+                        Confirm Cancellation
+                      </button>
+                      <button
+                        onClick={() => setCancelPreview(null)}
+                        className="text-cream-muted text-sm hover:text-cream transition-colors"
+                      >
+                        Keep Booking
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tip Form */}
+                {tippingId === b.id && (
+                  <div className="mt-4 bg-dark border border-gold/20 p-6 space-y-4">
+                    <h4 className="font-semibold">Leave a Tip for Chef {b.chefProfile.user.name}</h4>
+                    <div className="flex gap-2">
+                      {[5, 10, 20, 50].map((amt) => (
+                        <button
+                          key={amt}
+                          onClick={() => setTipAmount(String(amt))}
+                          className={`px-4 py-2 text-sm font-semibold border transition-colors ${tipAmount === String(amt) ? "bg-gold text-dark border-gold" : "border-dark-border text-cream-muted hover:border-gold/30"}`}
+                        >
+                          ${amt}
+                        </button>
+                      ))}
+                      <input
+                        type="number"
+                        placeholder="Custom"
+                        className="w-24 border border-dark-border bg-dark-card px-3 py-2 text-cream text-sm"
+                        value={tipAmount}
+                        onChange={(e) => setTipAmount(e.target.value)}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Optional message..."
+                      className="w-full border border-dark-border bg-dark-card px-4 py-3 text-cream"
+                      value={tipMessage}
+                      onChange={(e) => setTipMessage(e.target.value)}
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => submitTip(b.id)}
+                        disabled={submitting || !tipAmount}
+                        className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                      >
+                        {submitting ? "Sending..." : `Send $${tipAmount || 0} Tip`}
+                      </button>
+                      <button
+                        onClick={() => { setTippingId(null); setTipAmount(""); setTipMessage(""); }}
+                        className="text-cream-muted text-sm hover:text-cream transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Inline Review Form */}
+                {reviewingId === b.id && (
+                  <div className="mt-4 bg-dark border border-gold/20 p-6 space-y-4">
+                    <h4 className="font-semibold">Rate Your Experience</h4>
+                    <StarInput value={reviewRating} onChange={setReviewRating} />
+                    <textarea
+                      className="w-full border border-dark-border bg-dark-card px-4 py-3 h-20 text-cream"
+                      placeholder="Tell others about your experience..."
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => submitReview(b.id, b.chefProfileId)}
+                        disabled={submitting}
+                        className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                      >
+                        {submitting ? "Submitting..." : "Submit Review"}
+                      </button>
+                      <button
+                        onClick={() => setReviewingId(null)}
+                        className="text-cream-muted text-sm hover:text-cream transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

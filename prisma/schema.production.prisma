@@ -1,0 +1,119 @@
+// Production schema for PostgreSQL deployment
+// To use: copy this file over prisma/schema.prisma before deploying
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          String    @default("CLIENT") // CLIENT | CHEF | ADMIN
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  chefProfile   ChefProfile?
+  bookingsAsClient Booking[] @relation("ClientBookings")
+  reviews       Review[]
+}
+
+model ChefProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id])
+
+  // Required certifications
+  servSafeCertNumber    String
+  servSafeCertExpiry    DateTime
+  generalLiabilityPolicy String
+  generalLiabilityExpiry DateTime
+  productLiabilityPolicy String
+  productLiabilityExpiry DateTime
+
+  // Chef details
+  bio                   String?
+  specialtyDish         String
+  profileImageUrl       String?
+  hourlyRate            Float
+  isApproved            Boolean  @default(false)
+  isActive              Boolean  @default(true)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  specials              ChefSpecial[]
+  bookings              Booking[]    @relation("ChefBookings")
+  reviews               Review[]
+}
+
+model ChefSpecial {
+  id              String      @id @default(uuid())
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  name            String
+  description     String
+  price           Float    @default(0)
+  imageUrl        String?
+  createdAt       DateTime    @default(now())
+}
+
+model Booking {
+  id              String      @id @default(uuid())
+  clientId        String
+  client          User        @relation("ClientBookings", fields: [clientId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation("ChefBookings", fields: [chefProfileId], references: [id])
+
+  date            DateTime
+  time            String
+  guestCount      Int
+  specialRequests String?
+  address         String
+
+  // Pricing
+  subtotal        Float       // What the chef charges
+  platformFee     Float       // 30% commission
+  total           Float       // What client pays
+
+  // Payment
+  stripePaymentIntentId String?
+  paymentStatus         String  @default("UNPAID") // UNPAID | PAID | REFUNDED
+
+  status          String      @default("PENDING") // PENDING | CONFIRMED | COMPLETED | CANCELLED
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  review          Review?
+  items           BookingItem[]
+}
+
+model BookingItem {
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  name        String
+  price       Float
+  quantity    Int      @default(1)
+}
+
+model Review {
+  id              String      @id @default(uuid())
+  bookingId       String      @unique
+  booking         Booking     @relation(fields: [bookingId], references: [id])
+  clientId        String
+  client          User        @relation(fields: [clientId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  rating          Int         // 1-5 stars
+  comment         String?
+  createdAt       DateTime    @default(now())
+}
