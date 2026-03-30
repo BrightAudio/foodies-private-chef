@@ -31,3 +31,4 @@ prisma/dev.db-journal
 public/uploads/*
 !public/uploads/.gitkeep
 *.code-workspace
+.vercel
