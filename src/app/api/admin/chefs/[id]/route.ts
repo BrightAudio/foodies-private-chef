@@ -56,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   logAuditAction({
     adminUserId: user.userId,
     action: "CHEF_PROFILE_UPDATE",
-    targetType: "ChefProfile",
+    targetType: "CHEF",
     targetId: id,
     details: updateData,
     ipAddress: ip,

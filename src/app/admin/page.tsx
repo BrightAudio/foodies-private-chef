@@ -340,9 +340,10 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {loading ? (
+        {loading && (
           <p className="text-cream-muted">Loading...</p>
-        ) : tab === "chefs" ? (
+        )}
+        {!loading && tab === "chefs" && (
           /* ========== CHEFS TAB ========== */
           <div className="space-y-4">
             {chefs.length === 0 ? (
@@ -620,7 +621,8 @@ export default function AdminDashboard() {
               ))
             )}
           </div>
-        ) : tab === "users" ? (
+        )}
+        {!loading && tab === "users" && (
           /* ========== USERS/CUSTOMERS TAB ========== */
           <div className="bg-dark-card border border-dark-border overflow-x-auto">
             <table className="w-full">
@@ -664,7 +666,8 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        ) : tab === "bookings" ? (
+        )}
+        {!loading && tab === "bookings" && (
           /* ========== BOOKINGS TAB ========== */
           <div className="bg-dark-card border border-dark-border overflow-x-auto">
             <table className="w-full">
@@ -716,7 +719,8 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        ) : (
+        )}
+        {!loading && tab === "trucks" && (
           /* ========== FOOD TRUCKS TAB ========== */
           <div className="bg-dark-card border border-dark-border overflow-x-auto">
             <table className="w-full">
@@ -800,7 +804,8 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        ) : tab === "analytics" ? (
+        )}
+        {!loading && tab === "analytics" && (
           /* ========== ANALYTICS TAB ========== */
           analytics ? (
             <div className="space-y-6">
@@ -884,7 +889,8 @@ export default function AdminDashboard() {
           ) : (
             <p className="text-cream-muted">Loading analytics...</p>
           )
-        ) : tab === "audit" ? (
+        )}
+        {!loading && tab === "audit" && (
           /* ========== AUDIT LOG TAB ========== */
           <div className="bg-dark-card border border-dark-border overflow-x-auto">
             <table className="w-full">
@@ -921,7 +927,8 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        ) : tab === "alerts" ? (
+        )}
+        {!loading && tab === "alerts" && (
           /* ========== EXPIRY ALERTS TAB ========== */
           <div className="space-y-4">
             {expiryAlerts.length === 0 ? (
@@ -951,7 +958,7 @@ export default function AdminDashboard() {
               ))
             )}
           </div>
-        ) : null}
+        )}
       </div>
     </>
   );
