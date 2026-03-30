@@ -19,6 +19,16 @@ model User {
   antiPoachingStrikes   Int       @default(0) // Number of anti-poaching violations
   suspendedAt           DateTime? // If account is suspended
   suspensionReason      String?
+
+  // Referral system
+  referralCode          String?   @unique  // Unique referral code
+  referredByUserId      String?             // Who referred this user
+  referralCredits       Float     @default(0) // Credit balance from referrals
+
+  // Subscription
+  subscriptionTier      String    @default("FREE") // FREE | PREMIUM
+  subscriptionExpiresAt DateTime?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -32,9 +42,13 @@ model User {
   notifications Notification[]
   incidentReports IncidentReport[] @relation("IncidentReporter")
   incidentReportsAbout IncidentReport[] @relation("IncidentReported")
+  referralsSent Referral[] @relation("ReferralSender")
+  referralsReceived Referral[] @relation("ReferralReceiver")
+  insuranceReferrals InsuranceReferral[]
 
   @@index([email])
   @@index([role])
+  @@index([referralCode])
 }
 
 model ChefProfile {
@@ -50,10 +64,24 @@ model ChefProfile {
   productLiabilityPolicy String
   productLiabilityExpiry DateTime
 
-  // Insurance upload
+  // Insurance — compliance system
   insuranceDocUrl       String?
   insuranceExpiry       DateTime?
   insuranceVerified     Boolean  @default(false)
+  insuranceStatus       String   @default("missing") // missing | pending | verified | expired | rejected
+  insuranceProvider     String?  // e.g. "thimble"
+  insurancePolicyNumber String?
+  insuranceVerifiedAt   DateTime?
+
+  // Trust score (dynamic)
+  trustScore            Float    @default(0)
+
+  // Boost system (paid promotion)
+  boostActive           Boolean  @default(false)
+  boostExpiresAt        DateTime?
+
+  // Activation status: INCOMPLETE | PENDING_COMPLIANCE | ACTIVE | RESTRICTED
+  activationStatus      String   @default("INCOMPLETE")
 
   // Vehicle information
   vehicleLicensePlate   String?
@@ -179,6 +207,7 @@ model Booking {
   // Pricing
   subtotal        Float       // What the chef charges
   platformFee     Float       // 30% commission
+  clientServiceFee Float      @default(0) // 5-10% client service fee
   total           Float       // What client pays
 
   // Payment — Stripe Connect
@@ -383,4 +412,32 @@ model IncidentReport {
   @@index([reporterId])
   @@index([reportedUserId])
   @@index([status])
+}
+
+// Insurance provider referral tracking
+model InsuranceReferral {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  provider  String   // "thimble"
+  status    String   // "clicked" | "started" | "completed"
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Referral system
+model Referral {
+  id              String   @id @default(uuid())
+  referrerId      String
+  referrer        User     @relation("ReferralSender", fields: [referrerId], references: [id])
+  referredUserId  String
+  referredUser    User     @relation("ReferralReceiver", fields: [referredUserId], references: [id])
+  type            String   // CLIENT_REFERRAL | CHEF_REFERRAL
+  status          String   @default("PENDING") // PENDING | CREDITED | EXPIRED
+  creditAmount    Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([referrerId])
+  @@index([referredUserId])
 }

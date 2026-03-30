@@ -30,3 +30,4 @@ prisma/dev.db-journal
 # uploads (user-generated content)
 public/uploads/*
 !public/uploads/.gitkeep
+*.code-workspace

@@ -25,6 +25,9 @@ interface ChefDetail {
   user: { name: string; email: string };
   specials: { id: string; name: string; description: string; imageUrl: string | null }[];
   reviews: { id: string; rating: number; comment: string | null; createdAt: string; client: { name: string } }[];
+  bgCheckPassed?: boolean;
+  insuranceVerified?: boolean;
+  trustScore?: number;
 }
 
 const tierBadgeColors: Record<string, string> = {
@@ -67,8 +70,8 @@ export default function ChefProfilePage() {
   };
 
   const subtotal = chef?.hourlyRate || 0;
-  const platformFee = Math.round(subtotal * 0.3 * 100) / 100;
-  const total = Math.round((subtotal + platformFee) * 100) / 100;
+  const clientServiceFee = Math.round(subtotal * 0.08 * 100) / 100;
+  const total = Math.round((subtotal + clientServiceFee) * 100) / 100;
 
   const handleBook = async () => {
     const token = localStorage.getItem("token");
@@ -167,6 +170,19 @@ export default function ChefProfilePage() {
                 <span className="text-cream-muted/60 text-xs">Specialty:</span> {chef.specialtyDish}
               </p>
               {chef.bio && <p className="text-cream-muted/70 mt-3 leading-relaxed">{chef.bio}</p>}
+
+              {/* Trust Badges */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                {chef.bgCheckPassed && (
+                  <span className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1 font-medium">✓ Background Checked</span>
+                )}
+                {chef.insuranceVerified && (
+                  <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1 font-medium">🛡️ Insured</span>
+                )}
+                {chef.bgCheckPassed && chef.insuranceVerified && chef.completedJobs >= 5 && (
+                  <span className="text-xs bg-gold/10 text-gold border border-gold/20 px-3 py-1 font-medium">⭐ Foodies Verified</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -193,6 +209,12 @@ export default function ChefProfilePage() {
             </div>
           </div>
         )}
+
+        {/* Trust Banner */}
+        <div className="bg-green-500/5 border border-green-500/15 px-6 py-3 mb-8 flex items-center gap-3">
+          <span className="text-green-400 text-lg">🔒</span>
+          <p className="text-green-400/80 text-sm">All chefs are vetted and payments are securely held in escrow until your experience is complete.</p>
+        </div>
 
         {/* Book button */}
         {success ? (
@@ -262,7 +284,7 @@ export default function ChefProfilePage() {
               <h3 className="font-semibold mb-4 text-sm tracking-wider uppercase text-cream-muted">Price Summary</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-cream-muted">Base rate — {chef.user.name}</span>
+                  <span className="text-cream-muted">Chef fee — {chef.user.name}</span>
                   <span>${chef.hourlyRate}</span>
                 </div>
                 {selectedItems.length > 0 && (
@@ -272,9 +294,10 @@ export default function ChefProfilePage() {
                   </div>
                 )}
                 <div className="flex justify-between text-cream-muted/50">
-                  <span>Service fee (30%)</span>
-                  <span>${platformFee}</span>
+                  <span>Service fee (8%)</span>
+                  <span>${clientServiceFee}</span>
                 </div>
+                <p className="text-cream-muted/30 text-[10px]">Service fee helps cover platform operations, escrow, and customer support.</p>
                 <div className="flex justify-between font-bold text-lg border-t border-dark-border pt-3 mt-3 text-gold">
                   <span>Total</span>
                   <span>${total}</span>

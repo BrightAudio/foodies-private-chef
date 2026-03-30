@@ -45,6 +45,14 @@ interface AdminChef {
   antiPoachingAcceptedAt: string | null;
   driversLicenseNumber: string | null;
   willTravelToHomes: boolean;
+  insuranceDocUrl: string | null;
+  insuranceExpiry: string | null;
+  insuranceVerified: boolean;
+  insuranceStatus: string;
+  insuranceProvider: string | null;
+  insurancePolicyNumber: string | null;
+  activationStatus: string;
+  trustScore: number;
   user: { name: string; email: string };
 }
 
@@ -293,7 +301,7 @@ export default function AdminDashboard() {
     fetchIncidents();
   };
 
-  const updateChef = async (id: string, data: { isApproved?: boolean; isActive?: boolean; bgCheckStatus?: string; tier?: string; verificationStatus?: string; idVerificationStatus?: string }) => {
+  const updateChef = async (id: string, data: { isApproved?: boolean; isActive?: boolean; bgCheckStatus?: string; tier?: string; verificationStatus?: string; idVerificationStatus?: string; insuranceVerified?: boolean; insuranceStatus?: string; activationStatus?: string }) => {
     const token = getToken();
     await fetch(`/api/admin/chefs/${id}`, {
       method: "PATCH",
@@ -561,6 +569,78 @@ export default function AdminDashboard() {
                             <option value="MASTER_CHEF">Master Chef (no cap)</option>
                           </select>
                           {chef.tierOverride && <span className="text-[10px] text-amber-400">manually overridden</span>}
+                        </div>
+                      </div>
+
+                      {/* Insurance Compliance */}
+                      <div className="bg-dark border border-dark-border p-4 space-y-3">
+                        <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Insurance & Activation</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-cream-muted/60 text-xs">Insurance Status:</span>
+                            <span className={`ml-2 text-xs font-bold px-2 py-0.5 ${
+                              chef.insuranceStatus === "verified" ? "bg-emerald-500/10 text-emerald-400" :
+                              chef.insuranceStatus === "pending" ? "bg-amber-500/10 text-amber-400" :
+                              chef.insuranceStatus === "rejected" ? "bg-red-500/10 text-red-400" :
+                              chef.insuranceStatus === "expired" ? "bg-red-500/10 text-red-400" :
+                              "bg-dark-border text-cream-muted/50"
+                            }`}>
+                              {(chef.insuranceStatus || "missing").toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-cream-muted/60 text-xs">Activation:</span>
+                            <span className={`ml-2 text-xs font-bold px-2 py-0.5 ${
+                              chef.activationStatus === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400" :
+                              chef.activationStatus === "RESTRICTED" ? "bg-red-500/10 text-red-400" :
+                              chef.activationStatus === "PENDING_COMPLIANCE" ? "bg-amber-500/10 text-amber-400" :
+                              "bg-dark-border text-cream-muted/50"
+                            }`}>
+                              {chef.activationStatus || "INCOMPLETE"}
+                            </span>
+                          </div>
+                          {chef.insuranceProvider && (
+                            <div><span className="text-cream-muted/60 text-xs">Provider:</span> <span className="text-cream text-xs">{chef.insuranceProvider}</span></div>
+                          )}
+                          {chef.insurancePolicyNumber && (
+                            <div><span className="text-cream-muted/60 text-xs">Policy #:</span> <span className="text-cream text-xs">{chef.insurancePolicyNumber}</span></div>
+                          )}
+                          {chef.insuranceExpiry && (
+                            <div><span className="text-cream-muted/60 text-xs">Expires:</span> <span className="text-cream text-xs">{new Date(chef.insuranceExpiry).toLocaleDateString()}</span></div>
+                          )}
+                          <div><span className="text-cream-muted/60 text-xs">Trust Score:</span> <span className="text-cream text-xs font-bold">{chef.trustScore}/100</span></div>
+                        </div>
+                        {chef.insuranceDocUrl && (
+                          <a href={chef.insuranceDocUrl} target="_blank" rel="noopener noreferrer" className="text-gold text-xs hover:text-gold-light">View Insurance Document →</a>
+                        )}
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {chef.insuranceStatus === "pending" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => updateChef(chef.id, { insuranceVerified: true, insuranceStatus: "verified", activationStatus: "ACTIVE" })}
+                                className="bg-emerald-500/10 text-emerald-400 px-4 py-2 text-xs font-bold tracking-wider uppercase hover:bg-emerald-500/20 transition-colors"
+                              >
+                                ✓ Verify Insurance
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateChef(chef.id, { insuranceVerified: false, insuranceStatus: "rejected" })}
+                                className="bg-red-500/10 text-red-400 px-4 py-2 text-xs font-bold tracking-wider uppercase hover:bg-red-500/20 transition-colors"
+                              >
+                                ✕ Reject Insurance
+                              </button>
+                            </>
+                          )}
+                          {chef.activationStatus === "RESTRICTED" && (
+                            <button
+                              type="button"
+                              onClick={() => updateChef(chef.id, { activationStatus: "ACTIVE" })}
+                              className="bg-blue-500/10 text-blue-400 px-4 py-2 text-xs font-bold tracking-wider uppercase hover:bg-blue-500/20 transition-colors"
+                            >
+                              Lift Restriction
+                            </button>
+                          )}
                         </div>
                       </div>
 

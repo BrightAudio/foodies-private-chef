@@ -37,9 +37,11 @@ export function getTokenFromRequest(req: NextRequest): TokenPayload | null {
 }
 
 export const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT) || 30;
+export const CLIENT_SERVICE_FEE_PERCENT = Number(process.env.CLIENT_SERVICE_FEE_PERCENT) || 8;
 
 export function calculateFees(subtotal: number) {
   const platformFee = Math.round(subtotal * (PLATFORM_FEE_PERCENT / 100) * 100) / 100;
-  const total = Math.round((subtotal + platformFee) * 100) / 100;
-  return { subtotal, platformFee, total };
+  const clientServiceFee = Math.round(subtotal * (CLIENT_SERVICE_FEE_PERCENT / 100) * 100) / 100;
+  const total = Math.round((subtotal + clientServiceFee) * 100) / 100;
+  return { subtotal, platformFee, clientServiceFee, total };
 }

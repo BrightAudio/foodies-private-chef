@@ -20,6 +20,10 @@ interface Chef {
   tierEmoji: string;
   completedJobs: number;
   specials: { id: string; name: string }[];
+  bgCheckPassed?: boolean;
+  insuranceVerified?: boolean;
+  trustScore?: number;
+  boostActive?: boolean;
 }
 
 const tierBadgeColors: Record<string, string> = {
@@ -104,7 +108,8 @@ export default function BrowseChefs() {
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 pt-28 pb-16">
         <p className="text-gold text-xs font-medium tracking-[0.25em] uppercase mb-3">Our Chefs</p>
-        <h1 className="text-4xl font-bold mb-10 tracking-tight">Browse Private Chefs</h1>
+        <h1 className="text-4xl font-bold mb-4 tracking-tight">Browse Private Chefs</h1>
+        <p className="text-cream-muted/70 mb-10 text-sm">All chefs are vetted with background checks, insured, and payments are securely held in escrow.</p>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4 mb-10">
@@ -196,6 +201,25 @@ export default function BrowseChefs() {
                     <span className="text-sm text-cream-muted">
                       {chef.avgRating} ({chef.reviewCount})
                     </span>
+                    {chef.completedJobs > 0 && (
+                      <span className="text-xs text-cream-muted/50">· {chef.completedJobs} bookings</span>
+                    )}
+                  </div>
+
+                  {/* Trust Badges */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {chef.bgCheckPassed && (
+                      <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 font-medium">✓ Background Checked</span>
+                    )}
+                    {chef.insuranceVerified && (
+                      <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 font-medium">🛡️ Insured</span>
+                    )}
+                    {chef.bgCheckPassed && chef.insuranceVerified && chef.completedJobs >= 5 && (
+                      <span className="text-[10px] bg-gold/10 text-gold border border-gold/20 px-2 py-0.5 font-medium">⭐ Foodies Verified</span>
+                    )}
+                    {chef.boostActive && (
+                      <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 font-medium">🔥 Featured</span>
+                    )}
                   </div>
 
                   <p className="text-sm text-cream-muted mb-4">

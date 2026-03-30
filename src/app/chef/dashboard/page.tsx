@@ -80,6 +80,13 @@ interface InsuranceData {
   insuranceExpiry: string | null;
   insuranceVerified: boolean;
   isExpired: boolean;
+  insuranceStatus?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  activationStatus?: string;
+  trustScore?: number;
+  boostActive?: boolean;
+  boostExpiresAt?: string;
 }
 
 interface LegalTerms {
@@ -112,6 +119,9 @@ export default function ChefDashboard() {
   const [legalTerms, setLegalTerms] = useState<LegalTerms | null>(null);
   const [signingTerms, setSigningTerms] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
+  const [boostLoading, setBoostLoading] = useState(false);
+  const [insuranceProvider, setInsuranceProvider] = useState("");
+  const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
   useEffect(() => {
     fetchBookings();
@@ -881,24 +891,79 @@ export default function ChefDashboard() {
           </div>
         )}
 
-        {/* Settings Tab — Insurance + Legal */}
+        {/* Settings Tab — Insurance Compliance + Legal + Boost */}
         {dashTab === "settings" && (
           <div className="space-y-8">
-            {/* Insurance Section */}
+            {/* Activation Status Banner */}
+            {insurance && (
+              <div className={`border p-5 ${
+                insurance.activationStatus === "ACTIVE" ? "bg-emerald-500/10 border-emerald-500/30" :
+                insurance.activationStatus === "RESTRICTED" ? "bg-red-500/10 border-red-500/30" :
+                insurance.activationStatus === "PENDING_COMPLIANCE" ? "bg-amber-500/10 border-amber-500/30" :
+                "bg-blue-500/10 border-blue-500/30"
+              }`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">
+                    {insurance.activationStatus === "ACTIVE" ? "✅" :
+                     insurance.activationStatus === "RESTRICTED" ? "🚫" :
+                     insurance.activationStatus === "PENDING_COMPLIANCE" ? "⚠️" : "🔄"}
+                  </span>
+                  <div>
+                    <h3 className={`font-bold text-sm ${
+                      insurance.activationStatus === "ACTIVE" ? "text-emerald-400" :
+                      insurance.activationStatus === "RESTRICTED" ? "text-red-400" :
+                      insurance.activationStatus === "PENDING_COMPLIANCE" ? "text-amber-400" :
+                      "text-blue-400"
+                    }`}>
+                      {insurance.activationStatus === "ACTIVE" && "Active — Ready for Bookings"}
+                      {insurance.activationStatus === "RESTRICTED" && "Restricted — Under Compliance Review"}
+                      {insurance.activationStatus === "PENDING_COMPLIANCE" && "Pending Compliance — Action Required"}
+                      {insurance.activationStatus === "INCOMPLETE" && "Incomplete — Complete Setup to Go Live"}
+                      {!insurance.activationStatus && "Checking status..."}
+                    </h3>
+                    <p className="text-xs text-cream-muted mt-0.5">
+                      {insurance.activationStatus === "ACTIVE" && "Your profile is live and accepting bookings."}
+                      {insurance.activationStatus === "RESTRICTED" && "Your profile is temporarily hidden from search. Please contact support."}
+                      {insurance.activationStatus === "PENDING_COMPLIANCE" && "Upload your insurance and complete verification to activate your profile."}
+                      {insurance.activationStatus === "INCOMPLETE" && "Complete all onboarding steps to start accepting bookings."}
+                    </p>
+                    {insurance.trustScore !== undefined && insurance.trustScore > 0 && (
+                      <p className="text-xs text-cream-muted/50 mt-1">Trust Score: {insurance.trustScore}/100</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Insurance Compliance Section */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Insurance</h2>
+              <h2 className="text-xl font-bold mb-4">Insurance Compliance</h2>
               <div className="bg-dark-card border border-dark-border p-6 space-y-4">
+                {/* Current insurance status */}
                 {insurance && insurance.insuranceDocUrl ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{insurance.insuranceVerified ? "✅" : insurance.isExpired ? "🔴" : "⏳"}</span>
+                        <span className="text-2xl">
+                          {insurance.insuranceStatus === "verified" ? "✅" :
+                           insurance.insuranceStatus === "expired" || insurance.isExpired ? "🔴" :
+                           insurance.insuranceStatus === "rejected" ? "❌" : "⏳"}
+                        </span>
                         <div>
-                          <h3 className={`font-semibold ${insurance.insuranceVerified ? "text-emerald-400" : insurance.isExpired ? "text-red-400" : "text-amber-400"}`}>
-                            {insurance.insuranceVerified ? "Insurance Verified" : insurance.isExpired ? "Insurance Expired" : "Pending Verification"}
+                          <h3 className={`font-semibold ${
+                            insurance.insuranceStatus === "verified" ? "text-emerald-400" :
+                            insurance.insuranceStatus === "expired" || insurance.isExpired ? "text-red-400" :
+                            insurance.insuranceStatus === "rejected" ? "text-red-400" : "text-amber-400"
+                          }`}>
+                            {insurance.insuranceStatus === "verified" && "Insurance Verified"}
+                            {insurance.insuranceStatus === "pending" && "Pending Admin Verification"}
+                            {(insurance.insuranceStatus === "expired" || insurance.isExpired) && "Insurance Expired"}
+                            {insurance.insuranceStatus === "rejected" && "Insurance Rejected — Please Resubmit"}
+                            {insurance.insuranceStatus === "missing" && "Insurance Upload Required"}
                           </h3>
                           <p className="text-sm text-cream-muted">
                             Expires: {insurance.insuranceExpiry ? new Date(insurance.insuranceExpiry).toLocaleDateString() : "N/A"}
+                            {insurance.insuranceProvider && ` · Provider: ${insurance.insuranceProvider}`}
                           </p>
                         </div>
                       </div>
@@ -911,18 +976,59 @@ export default function ChefDashboard() {
                         View Document →
                       </a>
                     </div>
-                    {insurance.isExpired && (
+                    {(insurance.insuranceStatus === "expired" || insurance.isExpired) && (
                       <div className="bg-red-500/10 border border-red-500/20 px-4 py-3">
-                        <p className="text-sm text-red-400">Your insurance has expired. Please upload a new document to continue accepting bookings.</p>
+                        <p className="text-sm text-red-400">Your insurance has expired. Bookings are blocked until you upload a valid policy.</p>
+                      </div>
+                    )}
+                    {insurance.insuranceStatus === "rejected" && (
+                      <div className="bg-red-500/10 border border-red-500/20 px-4 py-3">
+                        <p className="text-sm text-red-400">Your insurance was rejected by our admin team. Please upload a valid general liability policy.</p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-cream-muted text-sm mb-1">No insurance document on file.</p>
+                    <p className="text-xs text-cream-muted/50">Insurance is required to accept bookings on Foodies.</p>
                   </div>
                 )}
 
+                {/* Get Insured — Thimble Referral */}
+                {(!insurance?.insuranceDocUrl || insurance.insuranceStatus !== "verified") && (
+                  <div className="bg-blue-500/5 border border-blue-500/20 p-5 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">🛡️</span>
+                      <div>
+                        <h4 className="font-semibold text-blue-300 text-sm">Need Insurance? Get Covered in Minutes</h4>
+                        <p className="text-xs text-cream-muted mt-1">
+                          Our partner Thimble offers on-demand general liability insurance starting at $5/day.
+                          Policies purchased through our link are fast-tracked for verification.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const token = localStorage.getItem("token");
+                        if (!token) return;
+                        try {
+                          const res = await fetch("/api/insurance/referral", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ provider: "thimble" }),
+                          });
+                          const data = await res.json();
+                          if (data.redirectUrl) window.open(data.redirectUrl, "_blank");
+                        } catch { /* ignore */ }
+                      }}
+                      className="bg-blue-600 text-white px-6 py-2 font-semibold text-xs tracking-[0.15em] uppercase hover:bg-blue-500 transition-colors"
+                    >
+                      Get Insured with Thimble →
+                    </button>
+                  </div>
+                )}
+
+                {/* Upload insurance form */}
                 <div className="border-t border-dark-border pt-4 space-y-4">
                   <h4 className="text-sm font-semibold">{insurance?.insuranceDocUrl ? "Update Insurance" : "Upload Insurance"}</h4>
                   <div className="space-y-3">
@@ -934,6 +1040,28 @@ export default function ChefDashboard() {
                           <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleInsuranceFileUpload(e.target.files[0]); }} />
                         </label>
                         {insuranceDocUrl && <span className="text-xs text-emerald-400">✓ Uploaded</span>}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Provider Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Thimble, State Farm"
+                          value={insuranceProvider}
+                          onChange={(e) => setInsuranceProvider(e.target.value)}
+                          className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Policy Number</label>
+                        <input
+                          type="text"
+                          placeholder="Policy #"
+                          value={insurancePolicyNumber}
+                          onChange={(e) => setInsurancePolicyNumber(e.target.value)}
+                          className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                        />
                       </div>
                     </div>
                     <div>
@@ -954,6 +1082,54 @@ export default function ChefDashboard() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Profile Boost Section */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Profile Boost</h2>
+              <div className="bg-dark-card border border-dark-border p-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="text-2xl">🔥</span>
+                  <div>
+                    <h3 className="font-semibold">Boost Your Profile</h3>
+                    <p className="text-sm text-cream-muted">
+                      Appear at the top of search results for 7 days. Boosted profiles get 3x more views.
+                    </p>
+                  </div>
+                </div>
+                {insurance?.boostActive && insurance?.boostExpiresAt ? (
+                  <div className="bg-purple-500/10 border border-purple-500/20 px-4 py-3 mb-4">
+                    <p className="text-sm text-purple-400">
+                      🔥 Boost active until {new Date(insurance.boostExpiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : null}
+                <button
+                  onClick={async () => {
+                    const token = localStorage.getItem("token");
+                    if (!token) return;
+                    setBoostLoading(true);
+                    try {
+                      const res = await fetch("/api/chefs/boost", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      const data = await res.json();
+                      if (!res.ok) { alert(data.error); return; }
+                      fetchInsurance();
+                      alert(data.message);
+                    } catch { alert("Failed to boost"); }
+                    finally { setBoostLoading(false); }
+                  }}
+                  disabled={boostLoading || insurance?.activationStatus !== "ACTIVE"}
+                  className="bg-purple-600 text-white px-6 py-2 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-purple-500 transition-colors disabled:opacity-40"
+                >
+                  {boostLoading ? "Processing..." : "Boost for $19.99/week"}
+                </button>
+                {insurance?.activationStatus !== "ACTIVE" && (
+                  <p className="text-xs text-cream-muted/50 mt-2">Must be fully active to boost your profile.</p>
+                )}
               </div>
             </div>
 

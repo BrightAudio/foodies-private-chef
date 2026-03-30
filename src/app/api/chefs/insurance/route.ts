@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Only chefs can update insurance" }, { status: 403 });
   }
 
-  const { insuranceDocUrl, insuranceExpiry } = await req.json();
+  const { insuranceDocUrl, insuranceExpiry, insuranceProvider, insurancePolicyNumber } = await req.json();
 
   if (!insuranceDocUrl || !insuranceExpiry) {
     return NextResponse.json({ error: "insuranceDocUrl and insuranceExpiry required" }, { status: 400 });
@@ -26,6 +26,9 @@ export async function PATCH(req: NextRequest) {
       insuranceDocUrl,
       insuranceExpiry: new Date(insuranceExpiry),
       insuranceVerified: false, // Admin must re-verify
+      insuranceStatus: "pending",
+      insuranceProvider: insuranceProvider || null,
+      insurancePolicyNumber: insurancePolicyNumber || null,
     },
   });
 
@@ -49,6 +52,13 @@ export async function GET(req: NextRequest) {
       insuranceDocUrl: true,
       insuranceExpiry: true,
       insuranceVerified: true,
+      insuranceStatus: true,
+      insuranceProvider: true,
+      insurancePolicyNumber: true,
+      activationStatus: true,
+      trustScore: true,
+      boostActive: true,
+      boostExpiresAt: true,
     },
   });
 

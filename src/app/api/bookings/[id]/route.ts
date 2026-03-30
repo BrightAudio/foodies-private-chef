@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { sendBookingConfirmedToClient, sendBookingCompletedToClient } from "@/lib/email";
-import { calculateTier } from "@/lib/tiers";
+import { calculateTier, calculateTrustScore } from "@/lib/tiers";
 import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/notifications";
 import { capturePayment, isStripeEnabled } from "@/lib/stripe";
 
@@ -102,6 +102,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Send email notifications
   if (status === "CONFIRMED") {
+    // Enforcement: verify chef insurance is still valid before confirming
+    const chefForCheck = await prisma.chefProfile.findUnique({ where: { id: booking.chefProfileId } });
+    if (chefForCheck?.insuranceStatus !== "verified") {
+      return NextResponse.json({ error: "Cannot confirm: chef insurance not verified" }, { status: 403 });
+    }
+    if (chefForCheck?.activationStatus === "RESTRICTED") {
+      return NextResponse.json({ error: "Cannot confirm: chef is under compliance review" }, { status: 403 });
+    }
+
     sendBookingConfirmedToClient({
       clientEmail: updated.client.email,
       clientName: updated.client.name,
@@ -154,9 +163,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const ratings = chefProfile.reviews.map((r) => r.rating);
       const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
       const newTier = calculateTier(newCompletedJobs, avgRating);
+      const openIncidents = await prisma.incidentReport.count({
+        where: { reportedUserId: chefProfile.userId, status: { in: ["OPEN", "INVESTIGATING"] } },
+      });
+      const trustScore = calculateTrustScore({
+        avgRating,
+        completedJobs: newCompletedJobs,
+        bgCheckPassed: chefProfile.bgCheckStatus === "clear",
+        insuranceVerified: chefProfile.insuranceVerified,
+        openIncidents,
+        tier: newTier,
+      });
       await prisma.chefProfile.update({
         where: { id: booking.chefProfileId },
-        data: { completedJobs: newCompletedJobs, tier: newTier },
+        data: { completedJobs: newCompletedJobs, tier: newTier, trustScore },
       });
     }
   }

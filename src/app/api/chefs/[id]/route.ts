@@ -32,5 +32,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     tierEmoji: tierInfo.emoji,
     avgRating: Math.round(avgRating * 10) / 10,
     reviewCount: ratings.length,
+    bgCheckPassed: chef.bgCheckStatus === "clear",
+    insuranceVerified: chef.insuranceVerified,
+    trustScore: chef.trustScore,
   });
 }

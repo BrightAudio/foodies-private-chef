@@ -96,6 +96,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chef not available" }, { status: 404 });
   }
 
+  // Enforcement: chef must be fully compliant
+  if (chef.activationStatus === "RESTRICTED") {
+    return NextResponse.json({ error: "This chef is currently under compliance review" }, { status: 403 });
+  }
+  if (chef.activationStatus !== "ACTIVE" && chef.activationStatus !== "PENDING_COMPLIANCE") {
+    return NextResponse.json({ error: "This chef has not completed onboarding" }, { status: 403 });
+  }
+  if (chef.insuranceStatus !== "verified") {
+    return NextResponse.json({ error: "This chef's insurance is not yet verified. Booking unavailable." }, { status: 403 });
+  }
+
   // Check chef availability — blocked dates
   const bookingDate = new Date(date);
   const dayStart = new Date(bookingDate.toISOString().split("T")[0]);
@@ -153,6 +164,7 @@ export async function POST(req: NextRequest) {
       generalArea: generalArea || null,
       subtotal: fees.subtotal,
       platformFee: fees.platformFee,
+      clientServiceFee: fees.clientServiceFee,
       total: fees.total,
       items: bookingItems.length > 0
         ? { create: bookingItems }

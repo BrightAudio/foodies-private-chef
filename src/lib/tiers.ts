@@ -79,3 +79,58 @@ export function getNextTierProgress(tier: string, completedJobs: number, avgRati
     ratingProgress: req.minRating > 0 ? Math.min(100, Math.round((avgRating / req.minRating) * 100)) : 100,
   };
 }
+
+// Trust score calculation (0-100 scale)
+export function calculateTrustScore(params: {
+  avgRating: number;      // 0-5
+  completedJobs: number;
+  bgCheckPassed: boolean;
+  insuranceVerified: boolean;
+  openIncidents: number;
+  tier: string;
+}): number {
+  let score = 0;
+
+  // Rating component (max 25 pts)
+  score += Math.min(25, params.avgRating * 5);
+
+  // Completed jobs component (max 20 pts, diminishing returns)
+  score += Math.min(20, Math.log2(params.completedJobs + 1) * 4);
+
+  // Background check (20 pts)
+  if (params.bgCheckPassed) score += 20;
+
+  // Insurance verified (20 pts)
+  if (params.insuranceVerified) score += 20;
+
+  // Tier bonus (max 15 pts)
+  if (params.tier === "MASTER_CHEF") score += 15;
+  else if (params.tier === "CHEF") score += 10;
+  else score += 5;
+
+  // Incident penalty (-10 per open incident)
+  score -= params.openIncidents * 10;
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+// Determine activation status based on chef profile state
+export function determineActivationStatus(chef: {
+  bgCheckStatus?: string;
+  insuranceStatus?: string;
+  isApproved?: boolean;
+  openIncidents?: number;
+}): string {
+  // Restricted if has severe unresolved incidents
+  if ((chef.openIncidents ?? 0) > 0) return "RESTRICTED";
+
+  // Active if fully compliant
+  if (chef.isApproved && chef.bgCheckStatus === "clear" && chef.insuranceStatus === "verified") {
+    return "ACTIVE";
+  }
+
+  // Pending compliance if approved but missing insurance or bg check
+  if (chef.isApproved) return "PENDING_COMPLIANCE";
+
+  return "INCOMPLETE";
+}

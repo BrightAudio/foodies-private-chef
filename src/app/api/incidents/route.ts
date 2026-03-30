@@ -36,6 +36,27 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // ENFORCEMENT: High/Critical severity → restrict the reported chef
+  if ((sev === "HIGH" || sev === "CRITICAL") && reportedUserId) {
+    const reportedChef = await prisma.chefProfile.findUnique({
+      where: { userId: reportedUserId },
+    });
+    if (reportedChef) {
+      await prisma.chefProfile.update({
+        where: { userId: reportedUserId },
+        data: { activationStatus: "RESTRICTED" },
+      });
+      await logAuditAction({
+        adminUserId: "SYSTEM",
+        action: "CHEF_RESTRICTED",
+        targetType: "CHEF",
+        targetId: reportedUserId,
+        details: { reason: `Auto-restricted due to ${sev} severity incident report (${type})`, incidentId: report.id },
+        ipAddress: "system",
+      });
+    }
+  }
+
   return NextResponse.json(report, { status: 201 });
 }
 

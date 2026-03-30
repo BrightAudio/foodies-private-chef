@@ -59,13 +59,25 @@ export async function GET(req: NextRequest) {
       completedJobs: chef.completedJobs,
       avgRating: Math.round(avgRating * 10) / 10,
       reviewCount: ratings.length,
+      // Trust badges
+      bgCheckPassed: chef.bgCheckStatus === "clear",
+      insuranceVerified: chef.insuranceVerified,
+      trustScore: chef.trustScore,
+      boostActive: chef.boostActive && chef.boostExpiresAt && new Date(chef.boostExpiresAt) > new Date(),
+      activationStatus: chef.activationStatus,
     };
-  }).filter((c) => c.avgRating >= minRating);
+  }).filter((c) => c.avgRating >= minRating && c.activationStatus !== "RESTRICTED");
 
   if (sortBy === "price") {
     chefsWithRating.sort((a, b) => a.hourlyRate - b.hourlyRate);
   } else {
-    chefsWithRating.sort((a, b) => b.avgRating - a.avgRating);
+    // Sort by trust score (boosted chefs first, then by trust score, then rating)
+    chefsWithRating.sort((a, b) => {
+      if (a.boostActive && !b.boostActive) return -1;
+      if (!a.boostActive && b.boostActive) return 1;
+      if (b.trustScore !== a.trustScore) return b.trustScore - a.trustScore;
+      return b.avgRating - a.avgRating;
+    });
   }
 
   // Paginate

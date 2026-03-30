@@ -12,11 +12,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const { isApproved, isActive, bgCheckStatus, tier, verificationStatus, idVerificationStatus } = await req.json();
+  const { isApproved, isActive, bgCheckStatus, tier, verificationStatus, idVerificationStatus, insuranceVerified, insuranceStatus, activationStatus } = await req.json();
 
   const updateData: Record<string, unknown> = {};
   if (typeof isApproved === "boolean") updateData.isApproved = isApproved;
   if (typeof isActive === "boolean") updateData.isActive = isActive;
+
+  // Insurance verification
+  if (typeof insuranceVerified === "boolean") {
+    updateData.insuranceVerified = insuranceVerified;
+    if (insuranceVerified) {
+      updateData.insuranceVerifiedAt = new Date();
+    }
+  }
+  if (insuranceStatus && ["missing", "pending", "verified", "expired", "rejected"].includes(insuranceStatus)) {
+    updateData.insuranceStatus = insuranceStatus;
+  }
+  if (activationStatus && ["INCOMPLETE", "PENDING_COMPLIANCE", "ACTIVE", "RESTRICTED"].includes(activationStatus)) {
+    updateData.activationStatus = activationStatus;
+  }
 
   if (bgCheckStatus && ["CLEARED", "FAILED", "PENDING", "NOT_SUBMITTED"].includes(bgCheckStatus)) {
     updateData.bgCheckStatus = bgCheckStatus;
