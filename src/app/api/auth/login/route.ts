@@ -6,7 +6,7 @@ import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 export async function POST(req: NextRequest) {
   // Rate limit auth attempts
   const ip = getClientIP(req);
-  const rl = checkRateLimit(ip, "auth");
+  const rl = await checkRateLimit(ip, "auth");
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many login attempts. Try again later." },

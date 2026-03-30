@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, calculateFees } from "@/lib/auth";
-import { stripe, isStripeEnabled } from "@/lib/stripe";
+import { stripe, isStripeEnabled, createEscrowPaymentIntent } from "@/lib/stripe";
 import { sendBookingCreatedToChef } from "@/lib/email";
 
 // POST /api/payments/create-intent
-// Creates a booking + Stripe PaymentIntent in one step
+// Creates a booking + Stripe PaymentIntent with escrow (manual capture).
+// Payment is authorized at booking time, captured only after job completion.
+// Platform fee is automatically deducted; chef receives payout via Stripe Connect.
 export async function POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
@@ -28,6 +30,16 @@ export async function POST(req: NextRequest) {
   });
   if (!chef || !chef.isApproved || !chef.isActive) {
     return NextResponse.json({ error: "Chef not available" }, { status: 404 });
+  }
+
+  // Chef must have cleared background check
+  if (chef.bgCheckStatus !== "CLEAR") {
+    return NextResponse.json({ error: "Chef has not passed background check" }, { status: 403 });
+  }
+
+  // Chef must have completed Stripe Connect onboarding
+  if (!chef.stripeConnectAccountId || !chef.stripeConnectOnboarded) {
+    return NextResponse.json({ error: "Chef has not completed payment setup" }, { status: 403 });
   }
 
   // Calculate pricing
@@ -63,16 +75,17 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Create Stripe PaymentIntent (amount in cents)
-  const paymentIntent = await stripe!.paymentIntents.create({
-    amount: Math.round(fees.total * 100),
-    currency: "usd",
-    metadata: {
+  // Create Stripe PaymentIntent with escrow (manual capture) and Connect destination
+  const paymentIntent = await createEscrowPaymentIntent(
+    Math.round(fees.total * 100), // amount in cents
+    chef.stripeConnectAccountId,
+    Math.round(fees.platformFee * 100), // platform fee in cents
+    {
       bookingId: booking.id,
       chefProfileId,
       clientId: user.userId,
-    },
-  });
+    }
+  );
 
   // Store the PaymentIntent ID
   await prisma.booking.update({

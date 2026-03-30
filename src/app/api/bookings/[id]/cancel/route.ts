@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { calculateCancellationFee } from "@/lib/cancellation";
 import { notifyBookingCancelled } from "@/lib/notifications";
+import { isStripeEnabled, refundPayment } from "@/lib/stripe";
 
-// POST /api/bookings/[id]/cancel — cancel a booking with cancellation policy
+// POST /api/bookings/[id]/cancel — cancel a booking with cancellation policy + Stripe refund
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = getTokenFromRequest(req);
   if (!user) {
@@ -43,6 +44,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Calculate cancellation fee
   const cancellation = calculateCancellationFee(booking.date, booking.time, booking.total);
 
+  // Process Stripe refund if payment was captured
+  if (isStripeEnabled() && booking.stripePaymentIntentId && cancellation.refundAmount > 0) {
+    if (booking.paymentStatus === "CAPTURED" || booking.paymentStatus === "RELEASED") {
+      try {
+        await refundPayment(
+          booking.stripePaymentIntentId,
+          Math.round(cancellation.refundAmount * 100) // Refund amount in cents
+        );
+      } catch (err) {
+        console.error("Stripe refund failed:", err);
+        // Continue with cancellation — admin can process refund manually
+      }
+    }
+  }
+
   const updated = await prisma.booking.update({
     where: { id },
     data: {
@@ -52,6 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       cancellationFeePercent: cancellation.feePercent,
       cancellationFee: cancellation.fee,
       refundAmount: cancellation.refundAmount,
+      paymentStatus: cancellation.refundAmount > 0 ? "REFUNDED" : booking.paymentStatus,
     },
   });
 

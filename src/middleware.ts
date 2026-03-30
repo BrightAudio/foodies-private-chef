@@ -11,7 +11,10 @@ export function middleware(req: NextRequest) {
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
   // CSRF protection: block non-GET requests from different origins
-  if (req.method !== "GET" && req.method !== "HEAD") {
+  // Exempt webhook endpoints (they use signature verification instead)
+  const isWebhook = req.nextUrl.pathname.startsWith("/api/webhooks/") ||
+    req.nextUrl.pathname === "/api/payments/webhook";
+  if (!isWebhook && req.method !== "GET" && req.method !== "HEAD") {
     const origin = req.headers.get("origin");
     const host = req.headers.get("host");
     if (origin && host) {

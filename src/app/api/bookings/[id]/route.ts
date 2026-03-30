@@ -4,6 +4,7 @@ import { getTokenFromRequest } from "@/lib/auth";
 import { sendBookingConfirmedToClient, sendBookingCompletedToClient } from "@/lib/email";
 import { calculateTier } from "@/lib/tiers";
 import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/notifications";
+import { capturePayment, isStripeEnabled } from "@/lib/stripe";
 
 // PATCH /api/bookings/[id] — update booking status
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -128,6 +129,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       clientName: updated.client.name,
       chefName: updated.chefProfile.user.name,
     }).catch(console.error);
+
+    // ESCROW RELEASE: Capture the held payment now that job is complete
+    if (isStripeEnabled() && booking.stripePaymentIntentId && booking.paymentStatus === "CAPTURED") {
+      try {
+        await capturePayment(booking.stripePaymentIntentId);
+        await prisma.booking.update({
+          where: { id },
+          data: { paymentStatus: "RELEASED", payoutStatus: "RELEASED", payoutReleasedAt: new Date() },
+        });
+      } catch (err) {
+        console.error("Failed to capture escrow payment:", err);
+        // Payment capture failed — admin should investigate
+      }
+    }
 
     // Auto-promote tier based on completed jobs + rating
     const chefProfile = await prisma.chefProfile.findUnique({

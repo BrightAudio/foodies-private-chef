@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { getTierInfo, getMaxRate } from "@/lib/tiers";
+import { cacheGet, cacheSet } from "@/lib/redis";
 
-// GET /api/chefs — browse approved chefs (public)
+// GET /api/chefs — browse approved chefs (public, cached)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const specialty = searchParams.get("specialty") || undefined;
@@ -13,6 +14,15 @@ export async function GET(req: NextRequest) {
   const sortBy = searchParams.get("sort") || "rating"; // rating | price
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+
+  // Try cache for default browse (no filters)
+  const isDefaultBrowse = !specialty && !cuisineType && minRating === 0 && maxPrice === Infinity && sortBy === "rating" && page === 1;
+  if (isDefaultBrowse) {
+    const cached = await cacheGet("chefs:browse:default");
+    if (cached) {
+      return NextResponse.json(JSON.parse(cached));
+    }
+  }
 
   const chefs = await prisma.chefProfile.findMany({
     where: {
@@ -61,8 +71,14 @@ export async function GET(req: NextRequest) {
   // Paginate
   const total = chefsWithRating.length;
   const paginated = chefsWithRating.slice((page - 1) * limit, page * limit);
+  const result = { chefs: paginated, total, page, limit };
 
-  return NextResponse.json({ chefs: paginated, total, page, limit });
+  // Cache default browse for 60 seconds
+  if (isDefaultBrowse) {
+    cacheSet("chefs:browse:default", JSON.stringify(result), 60).catch(() => {});
+  }
+
+  return NextResponse.json(result);
 }
 
 // POST /api/chefs — chef onboarding (requires auth)

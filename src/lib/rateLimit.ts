@@ -1,56 +1,41 @@
-// Rate limiting middleware using in-memory token bucket
-// Improvement #2: Prevent brute-force attacks on auth routes
+// Rate limiting — Redis-backed with in-memory fallback
+// Phase 7: Production-grade rate limiting
 
-interface RateLimitEntry {
-  tokens: number;
-  lastRefill: number;
-}
-
-const store = new Map<string, RateLimitEntry>();
-
-// Clean up stale entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (now - entry.lastRefill > 600_000) store.delete(key);
-  }
-}, 300_000);
+import { cacheIncr, cacheGet } from "@/lib/redis";
 
 interface RateLimitConfig {
-  maxTokens: number;     // Max requests in window
-  refillRate: number;    // Tokens added per second
-  windowMs?: number;     // Time window (unused — bucket refills continuously)
+  maxRequests: number;  // Max requests in window
+  windowSeconds: number; // Time window in seconds
 }
 
 const CONFIGS: Record<string, RateLimitConfig> = {
-  auth: { maxTokens: 5, refillRate: 0.1 },       // 5 attempts, refill 1 per 10s
-  api: { maxTokens: 60, refillRate: 1 },          // 60/min
-  upload: { maxTokens: 10, refillRate: 0.2 },     // 10 uploads, refill 1 per 5s
+  auth: { maxRequests: 5, windowSeconds: 60 },        // 5 per minute
+  api: { maxRequests: 60, windowSeconds: 60 },         // 60 per minute
+  upload: { maxRequests: 10, windowSeconds: 60 },      // 10 per minute
+  message: { maxRequests: 30, windowSeconds: 60 },     // 30 per minute
+  webhook: { maxRequests: 100, windowSeconds: 60 },    // 100 per minute (Stripe/Checkr)
 };
 
-export function checkRateLimit(identifier: string, type: "auth" | "api" | "upload" = "api"): { allowed: boolean; retryAfterMs: number } {
+export async function checkRateLimit(
+  identifier: string,
+  type: "auth" | "api" | "upload" | "message" | "webhook" = "api"
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
   const config = CONFIGS[type];
-  const key = `${type}:${identifier}`;
-  const now = Date.now();
+  const key = `rl:${type}:${identifier}`;
 
-  let entry = store.get(key);
-  if (!entry) {
-    entry = { tokens: config.maxTokens, lastRefill: now };
-    store.set(key, entry);
+  try {
+    const count = await cacheIncr(key, config.windowSeconds);
+    if (count > config.maxRequests) {
+      // Estimate time remaining in window
+      const ttlStr = await cacheGet(`${key}:ttl`);
+      const retryAfterMs = ttlStr ? parseInt(ttlStr, 10) * 1000 : config.windowSeconds * 1000;
+      return { allowed: false, retryAfterMs };
+    }
+    return { allowed: true, retryAfterMs: 0 };
+  } catch {
+    // If Redis fails, allow the request (fail-open for availability)
+    return { allowed: true, retryAfterMs: 0 };
   }
-
-  // Refill tokens based on elapsed time
-  const elapsed = (now - entry.lastRefill) / 1000;
-  entry.tokens = Math.min(config.maxTokens, entry.tokens + elapsed * config.refillRate);
-  entry.lastRefill = now;
-
-  if (entry.tokens < 1) {
-    const waitTime = Math.ceil((1 - entry.tokens) / config.refillRate * 1000);
-    return { allowed: false, retryAfterMs: waitTime };
-  }
-
-  entry.tokens -= 1;
-  return { allowed: true, retryAfterMs: 0 };
 }
 
 export function getClientIP(req: Request): string {
