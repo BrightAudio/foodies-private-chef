@@ -43,7 +43,7 @@ export default function LoginPage() {
         <p className="text-center text-cream-muted mb-8">Sign in to your Foodies account</p>
 
         <div className="bg-dark-card border border-dark-border p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Email</label>
               <input
