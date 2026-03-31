@@ -7,10 +7,14 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNeedsVerification(false);
+    setResendMsg("");
     setLoading(true);
 
     try {
@@ -20,7 +24,15 @@ export default function LoginPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+
+      if (!res.ok) {
+        if (data.needsVerification) {
+          setNeedsVerification(true);
+          setError(data.error);
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -33,6 +45,16 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resendVerification = async () => {
+    setResendMsg("");
+    await fetch("/api/auth/verify-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: form.email }),
+    });
+    setResendMsg("Verification email resent! Check your inbox.");
   };
 
   return (
@@ -63,7 +85,23 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && (
+              <div className="text-sm">
+                <p className="text-red-400">{error}</p>
+                {needsVerification && (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={resendVerification}
+                      className="text-gold hover:text-gold-light underline text-sm"
+                    >
+                      Resend verification email
+                    </button>
+                    {resendMsg && <p className="text-green-400 text-xs mt-1">{resendMsg}</p>}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               type="submit" disabled={loading}

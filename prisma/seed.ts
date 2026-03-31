@@ -26,13 +26,14 @@ async function main() {
   // ── Admin ──
   const admin = await prisma.user.upsert({
     where: { email: "admin.foodiesservices@gmail.com" },
-    update: {},
+    update: { emailVerified: true },
     create: {
       email: "admin.foodiesservices@gmail.com",
       passwordHash: await bcrypt.hash("RiceBoogers123456!", 12),
       name: "Foodies Admin",
       role: "ADMIN",
       referralCode: "FOODIES-ADMIN",
+      emailVerified: true,
     },
   });
   console.log("✅ Admin:", admin.email);
@@ -48,8 +49,8 @@ async function main() {
   for (const c of clientData) {
     const user = await prisma.user.upsert({
       where: { email: c.email },
-      update: {},
-      create: { ...c, passwordHash: pw, role: "CLIENT", termsAcceptedAt: new Date(), liabilityWaiverAt: new Date() },
+      update: { emailVerified: true },
+      create: { ...c, passwordHash: pw, role: "CLIENT", termsAcceptedAt: new Date(), liabilityWaiverAt: new Date(), emailVerified: true },
     });
     clients.push(user);
     console.log("✅ Client:", user.name);
@@ -314,13 +315,14 @@ async function main() {
   for (const chef of chefSeedData) {
     const user = await prisma.user.upsert({
       where: { email: chef.email },
-      update: {},
+      update: { emailVerified: true },
       create: {
         email: chef.email,
         passwordHash: pw,
         name: chef.name,
         role: "CHEF",
         referralCode: chef.name.split(" ")[0].toUpperCase() + "2025",
+        emailVerified: true,
       },
     });
 

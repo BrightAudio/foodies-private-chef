@@ -30,10 +30,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
+  if (!user.emailVerified) {
+    return NextResponse.json({
+      error: "Please verify your email before signing in. Check your inbox for a verification link.",
+      needsVerification: true,
+      email: user.email,
+    }, { status: 403 });
+  }
+
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
 
   return NextResponse.json({
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: true },
   });
 }

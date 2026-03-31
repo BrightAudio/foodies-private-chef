@@ -11,10 +11,20 @@ function RegisterForm() {
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", role: defaultRole });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Client-side validation
+    if (!form.name.trim()) { setError("Please enter your name"); return; }
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
+
     setLoading(true);
 
     try {
@@ -24,22 +34,62 @@ function RegisterForm() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Registration failed");
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      if (data.user.role === "CHEF") {
-        window.location.href = "/chef/onboarding";
-      } else {
-        window.location.href = "/browse";
-      }
+      setRegistered(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (registered) {
+    return (
+      <>
+        <Navbar />
+        <div className="max-w-md mx-auto pt-32 pb-16 px-4 text-center">
+          <div className="text-4xl mb-4">📧</div>
+          <h1 className="text-2xl font-bold mb-2 tracking-tight text-gold">Check Your Email</h1>
+          <p className="text-cream-muted mb-2">
+            We sent a verification link to <strong className="text-cream">{form.email}</strong>
+          </p>
+          <p className="text-cream-muted text-sm mb-8">
+            Click the link in the email to verify your account, then sign in.
+          </p>
+          <div className="space-y-4">
+            <Link
+              href="/login"
+              className="inline-block bg-gold text-dark px-8 py-3 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors"
+            >
+              Go to Sign In
+            </Link>
+            <p className="text-cream-muted text-xs">
+              Didn&apos;t get the email? Check your spam folder or{" "}
+              <button
+                type="button"
+                className="text-gold hover:text-gold-light underline"
+                onClick={async () => {
+                  await fetch("/api/auth/verify-email", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: form.email }),
+                  });
+                  setError("Verification email resent!");
+                }}
+              >
+                resend it
+              </button>
+            </p>
+            {error && <p className="text-gold text-sm">{error}</p>}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

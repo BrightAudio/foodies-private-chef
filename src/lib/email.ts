@@ -29,6 +29,31 @@ async function send(to: string, subject: string, html: string) {
 
 // ── Templates ──────────────────────────────────────────────
 
+export async function sendVerificationEmail(opts: { email: string; name: string; token: string }) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const verifyUrl = `${appUrl}/verify-email?token=${opts.token}`;
+
+  await send(
+    opts.email,
+    "Verify your Foodies account",
+    `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#0B0B0B;color:#F5F0E8;padding:40px;">
+      <h1 style="color:#C8A96A;font-size:24px;margin:0 0 24px;">Welcome to Foodies</h1>
+      <p>Hello ${opts.name},</p>
+      <p>Please verify your email address to activate your account.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${verifyUrl}" style="background:#C8A96A;color:#0B0B0B;padding:14px 32px;text-decoration:none;font-weight:bold;font-size:14px;letter-spacing:0.1em;text-transform:uppercase;">
+          Verify Email
+        </a>
+      </div>
+      <p style="color:#B8B0A2;font-size:12px;">Or copy this link: ${verifyUrl}</p>
+      <p style="color:#B8B0A2;font-size:12px;">This link expires in 24 hours.</p>
+      <p style="color:#B8B0A2;font-size:12px;margin-top:32px;">— The Foodies Team</p>
+    </div>
+    `
+  );
+}
+
 export async function sendBookingCreatedToChef(opts: {
   chefEmail: string;
   chefName: string;
