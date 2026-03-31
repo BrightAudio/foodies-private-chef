@@ -32,3 +32,4 @@ public/uploads/*
 !public/uploads/.gitkeep
 *.code-workspace
 .vercel
+.env*.local

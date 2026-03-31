@@ -64,9 +64,14 @@ export default function ChefOnboarding() {
     productLiabilityExpiry: "",
     // Step 2: Background Check
     bgCheckFullName: "",
+    bgCheckMiddleName: "",
     bgCheckDOB: "",
     bgCheckSSNLast4: "",
+    bgCheckSSN: "",
     bgCheckAddress: "",
+    bgCheckCity: "",
+    bgCheckState: "",
+    bgCheckZipCode: "",
     bgCheckPreviousAddress: "",
     bgCheckConsent: false,
     fcraConsentSignature: "",
@@ -138,9 +143,14 @@ export default function ChefOnboarding() {
           hourlyRate: Number(form.hourlyRate),
           bgCheckConsent: form.bgCheckConsent,
           bgCheckFullName: form.bgCheckFullName || undefined,
+          bgCheckMiddleName: form.bgCheckMiddleName || undefined,
           bgCheckDOB: form.bgCheckDOB || undefined,
           bgCheckSSNLast4: form.bgCheckSSNLast4 || undefined,
+          bgCheckSSN: form.bgCheckSSN || undefined,
           bgCheckAddress: form.bgCheckAddress || undefined,
+          bgCheckCity: form.bgCheckCity || undefined,
+          bgCheckState: form.bgCheckState || undefined,
+          bgCheckZipCode: form.bgCheckZipCode || undefined,
           bgCheckPreviousAddress: form.bgCheckPreviousAddress || undefined,
           fcraConsentSignature: form.fcraConsentSignature || undefined,
           governmentIdUrl: governmentIdUrl || undefined,
@@ -325,9 +335,20 @@ export default function ChefOnboarding() {
                 <input
                   type="text"
                   className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
-                  placeholder="Exactly as it appears on your government ID"
+                  placeholder="First and last name as on your government ID"
                   value={form.bgCheckFullName}
                   onChange={(e) => setForm({ ...form, bgCheckFullName: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Middle Name <span className="text-cream-muted/40">(if applicable)</span></label>
+                <input
+                  type="text"
+                  className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                  placeholder="Middle name as on your government ID"
+                  value={form.bgCheckMiddleName}
+                  onChange={(e) => setForm({ ...form, bgCheckMiddleName: e.target.value })}
                 />
               </div>
 
@@ -342,39 +363,76 @@ export default function ChefOnboarding() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">SSN Last 4 Digits *</label>
+                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Social Security Number *</label>
                   <input
-                    type="text"
-                    maxLength={4}
+                    type="password"
+                    maxLength={9}
+                    inputMode="numeric"
                     className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
-                    placeholder="••••"
-                    value={form.bgCheckSSNLast4}
+                    placeholder="•••••••••"
+                    value={form.bgCheckSSN}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                      setForm({ ...form, bgCheckSSNLast4: val });
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 9);
+                      setForm({ ...form, bgCheckSSN: val, bgCheckSSNLast4: val.slice(-4) });
                     }}
                   />
-                  <p className="text-[10px] text-cream-muted/40 mt-1">Required for identity verification. Stored securely and never displayed.</p>
+                  <p className="text-[10px] text-cream-muted/40 mt-1">Required for background check. Encrypted with AES-256 and never displayed in full.</p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Current Address *</label>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Street Address *</label>
                 <input
                   type="text"
                   className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
-                  placeholder="Full street address, city, state, ZIP"
+                  placeholder="123 Main Street, Apt 4B"
                   value={form.bgCheckAddress}
                   onChange={(e) => setForm({ ...form, bgCheckAddress: e.target.value })}
                 />
               </div>
 
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">City *</label>
+                  <input
+                    type="text"
+                    className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                    placeholder="City"
+                    value={form.bgCheckCity}
+                    onChange={(e) => setForm({ ...form, bgCheckCity: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">State *</label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    className="w-full border border-dark-border bg-dark px-4 py-3 text-cream uppercase"
+                    placeholder="MI"
+                    value={form.bgCheckState}
+                    onChange={(e) => setForm({ ...form, bgCheckState: e.target.value.toUpperCase().slice(0, 2) })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">ZIP Code *</label>
+                  <input
+                    type="text"
+                    maxLength={5}
+                    inputMode="numeric"
+                    className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                    placeholder="48912"
+                    value={form.bgCheckZipCode}
+                    onChange={(e) => setForm({ ...form, bgCheckZipCode: e.target.value.replace(/\D/g, "").slice(0, 5) })}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Previous Address <span className="text-cream-muted/40">(recommended)</span></label>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Previous Address <span className="text-cream-muted/40">(if moved in past 7 years)</span></label>
                 <input
                   type="text"
                   className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
-                  placeholder="If you've moved in the past 7 years"
+                  placeholder="Full previous address (street, city, state, ZIP)"
                   value={form.bgCheckPreviousAddress}
                   onChange={(e) => setForm({ ...form, bgCheckPreviousAddress: e.target.value })}
                 />
@@ -424,8 +482,8 @@ export default function ChefOnboarding() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!form.bgCheckFullName || !form.bgCheckDOB || form.bgCheckSSNLast4.length !== 4 || !form.bgCheckAddress) {
-                    setError("Full name, date of birth, SSN last 4, and current address are required");
+                  if (!form.bgCheckFullName || !form.bgCheckDOB || form.bgCheckSSN.length !== 9 || !form.bgCheckAddress || !form.bgCheckCity || !form.bgCheckState || !form.bgCheckZipCode) {
+                    setError("Full name, date of birth, SSN (9 digits), street address, city, state, and ZIP are required");
                     return;
                   }
                   if (!form.bgCheckConsent) {

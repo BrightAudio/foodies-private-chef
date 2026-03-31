@@ -19,9 +19,15 @@ interface AdminChef {
   isActive: boolean;
   bgCheckStatus: string;
   bgCheckFullName: string | null;
+  bgCheckMiddleName: string | null;
   bgCheckDOB: string | null;
   bgCheckSSNLast4: string | null;
+  bgCheckSSN: string | null;
   bgCheckAddress: string | null;
+  bgCheckCity: string | null;
+  bgCheckState: string | null;
+  bgCheckZipCode: string | null;
+  bgCheckPreviousAddress: string | null;
   bgCheckConsent: boolean;
   bgCheckSubmittedAt: string | null;
   bgCheckClearedAt: string | null;
@@ -475,10 +481,11 @@ export default function AdminDashboard() {
                           </div>
                           <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted pt-2">Background Check</h4>
                           <div className="space-y-1 text-sm">
-                            <p><span className="text-cream-muted/60">Name:</span> {chef.bgCheckFullName || "—"}</p>
+                            <p><span className="text-cream-muted/60">Name:</span> {chef.bgCheckFullName || "—"} {chef.bgCheckMiddleName ? `(${chef.bgCheckMiddleName})` : ""}</p>
                             <p><span className="text-cream-muted/60">DOB:</span> {chef.bgCheckDOB || "—"}</p>
-                            <p><span className="text-cream-muted/60">SSN Last 4:</span> {chef.bgCheckSSNLast4 ? "••••" + chef.bgCheckSSNLast4 : "—"}</p>
-                            <p><span className="text-cream-muted/60">Address:</span> {chef.bgCheckAddress || "—"}</p>
+                            <p><span className="text-cream-muted/60">SSN:</span> {chef.bgCheckSSN || chef.bgCheckSSNLast4 || "—"}</p>
+                            <p><span className="text-cream-muted/60">Address:</span> {chef.bgCheckAddress || "—"}{chef.bgCheckCity ? `, ${chef.bgCheckCity}` : ""}{chef.bgCheckState ? `, ${chef.bgCheckState}` : ""} {chef.bgCheckZipCode || ""}</p>
+                            <p><span className="text-cream-muted/60">Previous:</span> {chef.bgCheckPreviousAddress || "—"}</p>
                             <p><span className="text-cream-muted/60">Consent:</span> {chef.bgCheckConsent ? "Yes" : "No"}</p>
                           </div>
                         </div>

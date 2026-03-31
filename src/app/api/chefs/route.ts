@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { getTierInfo, getMaxRate } from "@/lib/tiers";
 import { cacheGet, cacheSet } from "@/lib/redis";
+import { encrypt } from "@/lib/crypto";
 
 // GET /api/chefs — browse approved chefs (public, cached)
 export async function GET(req: NextRequest) {
@@ -109,8 +110,8 @@ export async function POST(req: NextRequest) {
     productLiabilityPolicy, productLiabilityExpiry,
     bio, specialtyDish, hourlyRate, specials,
     profileImageUrl,
-    bgCheckConsent, bgCheckFullName, bgCheckDOB, bgCheckSSNLast4,
-    bgCheckAddress, bgCheckPreviousAddress,
+    bgCheckConsent, bgCheckFullName, bgCheckMiddleName, bgCheckDOB, bgCheckSSNLast4,
+    bgCheckSSN, bgCheckAddress, bgCheckCity, bgCheckState, bgCheckZipCode, bgCheckPreviousAddress,
     fcraConsentSignature,
     governmentIdUrl, governmentIdType, selfieUrl,
     driversLicenseNumber, willTravelToHomes,
@@ -194,10 +195,15 @@ export async function POST(req: NextRequest) {
       bgCheckStatus: bgCheckConsent ? "PENDING" : "NOT_SUBMITTED",
       bgCheckSubmittedAt: bgCheckConsent ? new Date() : null,
       bgCheckFullName: bgCheckFullName || null,
-      bgCheckDOB: bgCheckDOB || null,
-      bgCheckSSNLast4: bgCheckSSNLast4 || null,
-      bgCheckAddress: bgCheckAddress || null,
-      bgCheckPreviousAddress: bgCheckPreviousAddress || null,
+      bgCheckMiddleName: bgCheckMiddleName ? encrypt(bgCheckMiddleName) : null,
+      bgCheckDOB: bgCheckDOB ? encrypt(bgCheckDOB) : null,
+      bgCheckSSNLast4: bgCheckSSNLast4 ? encrypt(bgCheckSSNLast4) : null,
+      bgCheckSSN: bgCheckSSN ? encrypt(bgCheckSSN) : null,
+      bgCheckAddress: bgCheckAddress ? encrypt(bgCheckAddress) : null,
+      bgCheckCity: bgCheckCity || null,
+      bgCheckState: bgCheckState || null,
+      bgCheckZipCode: bgCheckZipCode || null,
+      bgCheckPreviousAddress: bgCheckPreviousAddress ? encrypt(bgCheckPreviousAddress) : null,
       fcraConsentSignature: fcraConsentSignature || null,
       fcraConsentTimestamp: fcraConsentSignature ? new Date() : null,
       fcraConsentIP: fcraConsentSignature ? ipAddress : null,
@@ -205,7 +211,7 @@ export async function POST(req: NextRequest) {
       governmentIdType: governmentIdType || null,
       selfieUrl: selfieUrl || null,
       idVerificationStatus: (governmentIdUrl && selfieUrl) ? "PENDING" : "NOT_SUBMITTED",
-      driversLicenseNumber: driversLicenseNumber || null,
+      driversLicenseNumber: driversLicenseNumber ? encrypt(driversLicenseNumber) : null,
       willTravelToHomes: willTravelToHomes !== false,
       verificationStatus,
       termsAcceptedAt: termsAccepted ? new Date() : null,

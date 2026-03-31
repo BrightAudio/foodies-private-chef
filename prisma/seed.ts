@@ -1,10 +1,25 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { encrypt } from "../src/lib/crypto";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Seeding Foodies database...\n");
+
+  // Clean non-upserted tables so re-seeds work idempotently
+  await prisma.foodTruckMenuItem.deleteMany();
+  await prisma.foodTruck.deleteMany();
+  await prisma.referral.deleteMany();
+  await prisma.favoriteChef.deleteMany();
+  await prisma.chefAvailability.deleteMany();
+  await prisma.incidentReport.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.tip.deleteMany();
+  await prisma.review.deleteMany();
+  await prisma.booking.deleteMany();
 
   const pw = await bcrypt.hash("Password123!", 12);
 
@@ -331,15 +346,21 @@ async function main() {
         productLiabilityPolicy: `PL-${Math.floor(100000 + Math.random() * 900000)}`,
         productLiabilityExpiry: new Date("2027-06-30"),
 
-        // Background check
+        // Background check (encrypted PII)
         bgCheckConsent: true,
         bgCheckStatus: chef.bgCheckStatus,
         bgCheckFullName: chef.name,
-        bgCheckDOB: "1985-01-15",
-        bgCheckSSNLast4: String(Math.floor(1000 + Math.random() * 9000)),
+        bgCheckMiddleName: encrypt("James"),
+        bgCheckDOB: encrypt("1985-01-15"),
+        bgCheckSSNLast4: encrypt(String(Math.floor(1000 + Math.random() * 9000))),
+        bgCheckSSN: encrypt(`${Math.floor(100 + Math.random() * 900)}${Math.floor(10 + Math.random() * 90)}${Math.floor(1000 + Math.random() * 9000)}`),
         bgCheckSubmittedAt: chef.bgCheckStatus !== "NOT_SUBMITTED" ? new Date("2025-01-15") : null,
         bgCheckClearedAt: chef.bgCheckStatus === "CLEAR" ? new Date("2025-01-20") : null,
-        bgCheckAddress: "123 Sample St, Lansing, MI 48912",
+        bgCheckAddress: encrypt("123 Sample St"),
+        bgCheckCity: "Lansing",
+        bgCheckState: "MI",
+        bgCheckZipCode: "48912",
+        bgCheckPreviousAddress: encrypt("456 Old Rd, Detroit, MI 48201"),
         verificationStatus: chef.verificationStatus,
         idVerificationStatus: chef.idVerificationStatus,
         governmentIdType: "DRIVERS_LICENSE",
@@ -353,7 +374,7 @@ async function main() {
         vehicleMake: chef.vehicle?.make ?? null,
         vehicleModel: chef.vehicle?.model ?? null,
         vehicleColor: chef.vehicle?.color ?? null,
-        driversLicenseNumber: chef.vehicle ? `DL-${Math.floor(1000000 + Math.random() * 9000000)}` : null,
+        driversLicenseNumber: chef.vehicle ? encrypt(`DL-${Math.floor(1000000 + Math.random() * 9000000)}`) : null,
         willTravelToHomes: true,
 
         // Terms
@@ -523,8 +544,10 @@ async function main() {
     take: 4,
   });
   for (const b of completedWithReview) {
-    await prisma.tip.create({
-      data: {
+    await prisma.tip.upsert({
+      where: { bookingId: b.id },
+      update: {},
+      create: {
         bookingId: b.id,
         amount: Math.round((b.subtotal * (0.15 + Math.random() * 0.10)) * 100) / 100,
         message: ["Thank you so much!", "You're amazing!", "Best meal ever!", "Can't wait to book again!"][Math.floor(Math.random() * 4)],
@@ -596,6 +619,7 @@ async function main() {
       { userId: clients[1].id, chefProfileId: chefProfiles[4].id },
       { userId: clients[2].id, chefProfileId: chefProfiles[4].id },
     ],
+    skipDuplicates: true,
   });
   console.log("✅ Client favorites");
 

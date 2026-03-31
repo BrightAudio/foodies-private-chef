@@ -111,7 +111,12 @@ model ChefProfile {
   bgCheckFullName       String?
   bgCheckDOB            String?
   bgCheckSSNLast4       String?
+  bgCheckSSN            String?      // Full SSN (encrypted) — for manual Checkr dashboard checks
+  bgCheckMiddleName     String?      // Middle name for background check accuracy
   bgCheckAddress        String?
+  bgCheckCity           String?
+  bgCheckState          String?
+  bgCheckZipCode        String?
   bgCheckPreviousAddress String?
 
   // FCRA consent
