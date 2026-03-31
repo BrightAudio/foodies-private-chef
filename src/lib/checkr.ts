@@ -2,6 +2,8 @@
 // FCRA-compliant criminal background checks (~$15/check)
 // Active provider for criminal background screening
 
+import crypto from "crypto";
+
 const CHECKR_API_KEY = process.env.CHECKR_API_KEY;
 const CHECKR_API_URL = process.env.CHECKR_API_URL || "https://api.checkr.com/v1";
 
@@ -133,11 +135,13 @@ export function mapCheckrStatus(checkrStatus: string): string {
 export function verifyCheckrWebhook(body: string, signature: string): boolean {
   if (!process.env.CHECKR_WEBHOOK_SECRET) return false;
 
-  const crypto = require("crypto");
   const expected = crypto
     .createHmac("sha256", process.env.CHECKR_WEBHOOK_SECRET)
     .update(body)
     .digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return false;
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }

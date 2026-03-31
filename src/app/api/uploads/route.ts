@@ -52,8 +52,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: result.url, thumbUrl: result.thumbUrl });
   }
 
-  // Local fallback
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  const result = await optimizeImage(buffer, filename);
-  return NextResponse.json({ url: result.url, thumbUrl: result.thumbUrl });
+  // Local fallback — only works in dev (Vercel has a read-only filesystem)
+  try {
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    const result = await optimizeImage(buffer, filename);
+    return NextResponse.json({ url: result.url, thumbUrl: result.thumbUrl });
+  } catch {
+    return NextResponse.json(
+      { error: "File storage not configured. Set up S3 for production uploads." },
+      { status: 503 }
+    );
+  }
 }

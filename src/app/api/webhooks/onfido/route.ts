@@ -10,13 +10,14 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature") || "";
 
-  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+  const identityWebhookSecret = process.env.STRIPE_IDENTITY_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
+  if (!stripe || !identityWebhookSecret) {
     return NextResponse.json({ error: "Stripe webhook not configured" }, { status: 503 });
   }
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(body, signature, identityWebhookSecret);
   } catch (err) {
     console.error("Stripe Identity webhook signature verification failed:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });

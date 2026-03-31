@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 
+// Extend serverless timeout for SSE (Vercel Pro: up to 300s)
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 // GET /api/notifications/stream — SSE endpoint for real-time notifications
 export async function GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
