@@ -71,8 +71,10 @@ function RegisterForm() {
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Phone (optional)</label>
               <input
-                type="tel"
+                type="text"
+                inputMode="tel"
                 className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                placeholder="555-555-5555"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
