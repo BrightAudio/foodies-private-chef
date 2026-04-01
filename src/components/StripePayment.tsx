@@ -56,7 +56,7 @@ export default function StripePayment({ clientSecret, total, onSuccess, onError 
   onError: (msg: string) => void;
 }) {
   if (!stripePromise) {
-    return <p className="text-red-400 text-sm">Stripe is not configured.</p>;
+    return <p className="text-red-400 text-sm">Payments are not configured.</p>;
   }
 
   return (

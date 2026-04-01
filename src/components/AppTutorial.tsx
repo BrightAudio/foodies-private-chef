@@ -20,7 +20,7 @@ const CHEF_STEPS: TutorialStep[] = [
   { title: "Post Weekly Specials", description: "Feature your signature dishes with photos and grocery lists. These appear in clients' For You feeds.", icon: "⭐" },
   { title: "Manage Bookings", description: "Accept or decline bookings from your dashboard. Communicate with clients about their events.", icon: "📋" },
   { title: "Handle Custom Requests", description: "Receive custom dish requests, quote grocery costs, and get client approval before shopping.", icon: "🛒" },
-  { title: "Get Paid", description: "Payments transfer to your connected Stripe account after each completed event.", icon: "💰" },
+  { title: "Get Paid", description: "Payments transfer to your connected Foodies account after each completed event.", icon: "💰" },
 ];
 
 export default function AppTutorial() {
