@@ -18,20 +18,25 @@ export async function GET(req: NextRequest) {
     where: { chefProfile: { isApproved: true, isActive: true } },
     include: {
       chefProfile: {
-        select: {
-          id: true, tier: true, cuisineType: true, specialtyDish: true,
-          avgRating: true, completedJobs: true, hourlyRate: true,
-          profileImageUrl: true,
+        include: {
           user: { select: { name: true } },
+          reviews: { select: { rating: true } },
         },
       },
     },
     orderBy: { createdAt: "desc" },
   });
 
+  // Compute avgRating for each special's chef
+  const enriched = specials.map((s) => {
+    const ratings = s.chefProfile.reviews.map((r) => r.rating);
+    const avgRating = ratings.length > 0 ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : null;
+    return { ...s, chefProfile: { ...s.chefProfile, avgRating } };
+  });
+
   // Anonymous — default ranking
   if (!token) {
-    const ranked = specials.map((s) => ({
+    const ranked = enriched.map((s) => ({
       ...serializeSpecial(s),
       relevanceScore: baseScore(s),
       matchReason: "trending",
@@ -131,7 +136,7 @@ export async function GET(req: NextRequest) {
 
   // ── Score each special ──
 
-  const ranked = specials.map((s) => {
+  const ranked = enriched.map((s) => {
     let score = baseScore(s);
     const reasons: string[] = [];
     const cuisineKey = s.chefProfile.cuisineType?.toLowerCase() || "";
@@ -216,10 +221,8 @@ export async function GET(req: NextRequest) {
 }
 
 // Base score from chef quality metrics (non-personalized ranking)
-function baseScore(s: {
-  isWeeklySpecial: boolean;
-  chefProfile: { tier: string; avgRating: number | null; completedJobs: number };
-}): number {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function baseScore(s: any): number {
   let score = 10;
   if (s.isWeeklySpecial) score += 20;
   if (s.chefProfile.tier === "MASTER_CHEF") score += 15;
@@ -229,27 +232,8 @@ function baseScore(s: {
   return score;
 }
 
-function serializeSpecial(s: {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string | null;
-  isWeeklySpecial: boolean;
-  estimatedGroceryCost: number | null;
-  chefProfileId: string;
-  chefProfile: {
-    id: string;
-    tier: string;
-    cuisineType: string | null;
-    specialtyDish: string | null;
-    avgRating: number | null;
-    completedJobs: number;
-    hourlyRate: number;
-    profileImageUrl: string | null;
-    user: { name: string };
-  };
-}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializeSpecial(s: any) {
   return {
     id: s.id,
     name: s.name,

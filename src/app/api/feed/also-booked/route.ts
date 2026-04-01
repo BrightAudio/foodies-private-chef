@@ -68,18 +68,14 @@ export async function GET(req: NextRequest) {
   // 6. Fetch chef details
   const chefs = await prisma.chefProfile.findMany({
     where: { id: { in: topChefIds }, isApproved: true, isActive: true },
-    select: {
-      id: true,
-      tier: true,
-      cuisineType: true,
-      specialtyDish: true,
-      avgRating: true,
-      completedJobs: true,
-      hourlyRate: true,
-      profileImageUrl: true,
+    include: {
       user: { select: { name: true } },
+      reviews: { select: { rating: true } },
     },
   });
+
+  const computeRating = (reviews: { rating: number }[]) =>
+    reviews.length > 0 ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10 : null;
 
   // Sort by our ranking
   const result = topChefIds
@@ -92,7 +88,7 @@ export async function GET(req: NextRequest) {
         tier: chef.tier,
         cuisine: chef.cuisineType,
         specialty: chef.specialtyDish,
-        rating: chef.avgRating,
+        rating: computeRating(chef.reviews),
         jobs: chef.completedJobs,
         rate: chef.hourlyRate,
         image: chef.profileImageUrl,
@@ -129,10 +125,9 @@ export async function GET(req: NextRequest) {
       if (siblingBookings.length > 0) {
         const sibChefs = await prisma.chefProfile.findMany({
           where: { id: { in: siblingBookings.map((b) => b.chefProfileId) }, isApproved: true, isActive: true },
-          select: {
-            id: true, tier: true, cuisineType: true, specialtyDish: true,
-            avgRating: true, completedJobs: true, hourlyRate: true,
-            profileImageUrl: true, user: { select: { name: true } },
+          include: {
+            user: { select: { name: true } },
+            reviews: { select: { rating: true } },
           },
         });
 
@@ -142,7 +137,7 @@ export async function GET(req: NextRequest) {
           tier: chef.tier,
           cuisine: chef.cuisineType,
           specialty: chef.specialtyDish,
-          rating: chef.avgRating,
+          rating: computeRating(chef.reviews),
           jobs: chef.completedJobs,
           rate: chef.hourlyRate,
           image: chef.profileImageUrl,
