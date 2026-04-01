@@ -113,6 +113,24 @@ export default function ChefDashboard() {
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceData | null>(null);
+
+  // Custom dish requests state
+  interface DishRequestItem {
+    id: string;
+    dishName: string;
+    description: string;
+    guestCount: number;
+    status: string;
+    groceryItems: string | null;
+    estimatedGroceryCost: number | null;
+    chefNotes: string | null;
+    clientNotes: string | null;
+    client: { name: string };
+    bookingId: string;
+    createdAt: string;
+  }
+  const [dishRequests, setDishRequests] = useState<DishRequestItem[]>([]);
+  const [quoteForm, setQuoteForm] = useState<{ requestId: string; groceryRows: { item: string; qty: string; estCost: string }[]; notes: string } | null>(null);
   const [insuranceUploading, setInsuranceUploading] = useState(false);
   const [insuranceDocUrl, setInsuranceDocUrl] = useState("");
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
@@ -124,9 +142,10 @@ export default function ChefDashboard() {
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
   // Specials state
-  const [specials, setSpecials] = useState<{ id: string; name: string; description: string; price: number; imageUrl: string | null; isWeeklySpecial: boolean; weekStartDate: string | null }[]>([]);
+  const [specials, setSpecials] = useState<{ id: string; name: string; description: string; price: number; imageUrl: string | null; isWeeklySpecial: boolean; weekStartDate: string | null; groceryItems: string | null; estimatedGroceryCost: number | null }[]>([]);
   const [needsWeeklyRotation, setNeedsWeeklyRotation] = useState(false);
   const [specialForm, setSpecialForm] = useState({ name: "", description: "", price: "", isWeeklySpecial: false });
+  const [groceryRows, setGroceryRows] = useState<{ item: string; qty: string; estCost: string }[]>([]);
   const [specialSaving, setSpecialSaving] = useState(false);
   const [showSpecialForm, setShowSpecialForm] = useState(false);
 
@@ -140,7 +159,39 @@ export default function ChefDashboard() {
     fetchInsurance();
     fetchLegalTerms();
     fetchSpecials();
+    fetchDishRequests();
   }, [filter]);
+
+  const fetchDishRequests = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/dish-requests", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setDishRequests(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const submitQuote = async () => {
+    if (!quoteForm) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const validGrocery = quoteForm.groceryRows.filter((g) => g.item.trim());
+    const estCost = validGrocery.reduce((s, g) => s + (Number(g.estCost) || 0), 0);
+    try {
+      const res = await fetch("/api/dish-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          requestId: quoteForm.requestId,
+          action: "quote",
+          groceryItems: validGrocery,
+          estimatedGroceryCost: estCost,
+          chefNotes: quoteForm.notes,
+        }),
+      });
+      if (res.ok) { setQuoteForm(null); fetchDishRequests(); }
+    } catch { /* ignore */ }
+  };
 
   const fetchSpecials = async () => {
     const token = localStorage.getItem("token");
@@ -159,14 +210,22 @@ export default function ChefDashboard() {
     const token = localStorage.getItem("token");
     if (!token || !specialForm.name.trim() || !specialForm.description.trim()) return;
     setSpecialSaving(true);
+    const validGrocery = groceryRows.filter((g) => g.item.trim());
+    const estGroceryCost = validGrocery.reduce((sum, g) => sum + (Number(g.estCost) || 0), 0);
     try {
       const res = await fetch("/api/chefs/specials", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...specialForm, price: specialForm.price ? Number(specialForm.price) : 0 }),
+        body: JSON.stringify({
+          ...specialForm,
+          price: specialForm.price ? Number(specialForm.price) : 0,
+          groceryItems: validGrocery.length > 0 ? validGrocery : null,
+          estimatedGroceryCost: validGrocery.length > 0 ? estGroceryCost : null,
+        }),
       });
       if (res.ok) {
         setSpecialForm({ name: "", description: "", price: "", isWeeklySpecial: false });
+        setGroceryRows([]);
         setShowSpecialForm(false);
         fetchSpecials();
       }
@@ -705,6 +764,72 @@ export default function ChefDashboard() {
                     </label>
                   </div>
                 </div>
+
+                {/* Grocery List Builder */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted">🛒 Grocery List (optional)</label>
+                    <button
+                      type="button"
+                      onClick={() => setGroceryRows([...groceryRows, { item: "", qty: "", estCost: "" }])}
+                      className="text-xs text-gold hover:text-gold-light transition-colors"
+                    >
+                      + Add Item
+                    </button>
+                  </div>
+                  {groceryRows.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setGroceryRows([{ item: "", qty: "", estCost: "" }])}
+                      className="w-full border border-dashed border-dark-border bg-dark/50 px-4 py-3 text-cream-muted text-sm hover:border-gold/30 transition-colors"
+                    >
+                      Add grocery items for this dish...
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      {groceryRows.map((row, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Item (e.g. Chilean Sea Bass)"
+                            className="flex-1 border border-dark-border bg-dark px-3 py-2 text-sm text-cream"
+                            value={row.item}
+                            onChange={(e) => { const nr = [...groceryRows]; nr[idx] = { ...nr[idx], item: e.target.value }; setGroceryRows(nr); }}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Qty"
+                            className="w-20 border border-dark-border bg-dark px-3 py-2 text-sm text-cream"
+                            value={row.qty}
+                            onChange={(e) => { const nr = [...groceryRows]; nr[idx] = { ...nr[idx], qty: e.target.value }; setGroceryRows(nr); }}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Cost"
+                            className="w-24 border border-dark-border bg-dark px-3 py-2 text-sm text-cream"
+                            value={row.estCost}
+                            onChange={(e) => { const nr = [...groceryRows]; nr[idx] = { ...nr[idx], estCost: e.target.value }; setGroceryRows(nr); }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setGroceryRows(groceryRows.filter((_, i) => i !== idx))}
+                            className="text-red-400 hover:text-red-300 px-2"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                      {groceryRows.some((g) => g.item.trim()) && (
+                        <p className="text-xs text-cream-muted text-right">
+                          Est. total: <span className="text-gold font-semibold">${groceryRows.reduce((s, g) => s + (Number(g.estCost) || 0), 0).toFixed(2)}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={createSpecial}
                   disabled={specialSaving || !specialForm.name.trim() || !specialForm.description.trim()}
@@ -741,7 +866,10 @@ export default function ChefDashboard() {
                     <div className="p-4">
                       <h3 className="font-semibold text-lg mb-1">{s.name}</h3>
                       <p className="text-cream-muted text-sm mb-3 leading-relaxed line-clamp-2">{s.description}</p>
-                      {s.price > 0 && <p className="text-gold font-bold mb-3">${s.price.toFixed(2)}</p>}
+                      {s.price > 0 && <p className="text-gold font-bold mb-1">${s.price.toFixed(2)}</p>}
+                      {s.estimatedGroceryCost != null && s.estimatedGroceryCost > 0 && (
+                        <p className="text-cream-muted text-xs mb-3">🛒 Groceries: ~${s.estimatedGroceryCost.toFixed(2)}</p>
+                      )}
                       <div className="flex gap-2">
                         {!s.isWeeklySpecial && (
                           <button
@@ -1007,6 +1135,101 @@ export default function ChefDashboard() {
             ))}
           </div>
         )}
+
+          {/* Custom Dish Requests */}
+          {dishRequests.length > 0 && (
+            <div className="mt-8 space-y-4">
+              <h2 className="text-xl font-bold">✨ Custom Dish Requests</h2>
+              {dishRequests.filter((r) => r.status !== "CANCELLED").map((r) => (
+                <div key={r.id} className={`bg-dark-card border p-5 ${r.status === "PENDING" ? "border-gold/40" : "border-dark-border"}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{r.dishName}</h3>
+                      <p className="text-cream-muted text-sm">From {r.client.name} · {r.guestCount} guests</p>
+                    </div>
+                    <span className={`text-xs font-bold px-3 py-1 uppercase tracking-wider ${
+                      r.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                      r.status === "QUOTED" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                      r.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                      "bg-red-500/10 text-red-400 border border-red-500/20"
+                    }`}>{r.status}</span>
+                  </div>
+                  <p className="text-cream-muted text-sm mb-4">{r.description}</p>
+
+                  {r.status === "QUOTED" && r.estimatedGroceryCost != null && (
+                    <div className="bg-dark border border-dark-border p-3 mb-4">
+                      <p className="text-sm text-cream-muted">Your quote: <span className="text-gold font-bold">${r.estimatedGroceryCost.toFixed(2)}</span> groceries</p>
+                      {r.chefNotes && <p className="text-xs text-cream-muted/60 mt-1">{r.chefNotes}</p>}
+                      <p className="text-xs text-cream-muted/40 mt-2">Waiting for client approval...</p>
+                    </div>
+                  )}
+
+                  {r.status === "APPROVED" && (
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 mb-4">
+                      <p className="text-sm text-emerald-400">✓ Client approved! Grocery budget: ${r.estimatedGroceryCost?.toFixed(2)}</p>
+                    </div>
+                  )}
+
+                  {r.status === "PENDING" && quoteForm?.requestId !== r.id && (
+                    <button
+                      onClick={() => setQuoteForm({ requestId: r.id, groceryRows: [{ item: "", qty: "", estCost: "" }], notes: "" })}
+                      className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
+                    >
+                      Send Quote with Grocery List
+                    </button>
+                  )}
+
+                  {quoteForm?.requestId === r.id && (
+                    <div className="border border-gold/30 bg-gold/5 p-4 space-y-3">
+                      <p className="text-xs font-medium tracking-wider uppercase text-gold">🛒 Grocery List for {r.dishName}</p>
+                      {quoteForm.groceryRows.map((row, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Item"
+                            className="flex-1 border border-dark-border bg-dark px-3 py-2 text-sm text-cream"
+                            value={row.item}
+                            onChange={(e) => { const nr = [...quoteForm.groceryRows]; nr[idx] = { ...nr[idx], item: e.target.value }; setQuoteForm({ ...quoteForm, groceryRows: nr }); }}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Qty"
+                            className="w-20 border border-dark-border bg-dark px-3 py-2 text-sm text-cream"
+                            value={row.qty}
+                            onChange={(e) => { const nr = [...quoteForm.groceryRows]; nr[idx] = { ...nr[idx], qty: e.target.value }; setQuoteForm({ ...quoteForm, groceryRows: nr }); }}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Cost"
+                            className="w-24 border border-dark-border bg-dark px-3 py-2 text-sm text-cream"
+                            value={row.estCost}
+                            onChange={(e) => { const nr = [...quoteForm.groceryRows]; nr[idx] = { ...nr[idx], estCost: e.target.value }; setQuoteForm({ ...quoteForm, groceryRows: nr }); }}
+                          />
+                          <button type="button" onClick={() => setQuoteForm({ ...quoteForm, groceryRows: quoteForm.groceryRows.filter((_, i) => i !== idx) })} className="text-red-400 px-2">✕</button>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setQuoteForm({ ...quoteForm, groceryRows: [...quoteForm.groceryRows, { item: "", qty: "", estCost: "" }] })} className="text-xs text-gold hover:text-gold-light">+ Add Item</button>
+                      {quoteForm.groceryRows.some((g) => g.item.trim()) && (
+                        <p className="text-xs text-cream-muted text-right">Est. total: <span className="text-gold font-semibold">${quoteForm.groceryRows.reduce((s, g) => s + (Number(g.estCost) || 0), 0).toFixed(2)}</span></p>
+                      )}
+                      <textarea
+                        placeholder="Notes for the client (optional)"
+                        className="w-full border border-dark-border bg-dark px-3 py-2 h-16 text-sm text-cream"
+                        value={quoteForm.notes}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, notes: e.target.value })}
+                      />
+                      <div className="flex gap-3">
+                        <button onClick={submitQuote} disabled={!quoteForm.groceryRows.some((g) => g.item.trim())} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">Send Quote</button>
+                        <button onClick={() => setQuoteForm(null)} className="text-cream-muted text-sm hover:text-cream">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           </>
         )}
 

@@ -46,9 +46,43 @@ export default function ClientBookings() {
   const [incidentSeverity, setIncidentSeverity] = useState("MEDIUM");
   const [incidentDescription, setIncidentDescription] = useState("");
 
+  // Dish request state
+  interface DishReq {
+    id: string;
+    dishName: string;
+    description: string;
+    status: string;
+    groceryItems: string | null;
+    estimatedGroceryCost: number | null;
+    chefNotes: string | null;
+    bookingId: string;
+  }
+  const [dishRequests, setDishRequests] = useState<DishReq[]>([]);
+
   useEffect(() => {
     fetchBookings();
+    fetchDishRequests();
   }, []);
+
+  const fetchDishRequests = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/dish-requests", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setDishRequests(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const respondToDishRequest = async (requestId: string, action: "approve" | "reject") => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    await fetch("/api/dish-requests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ requestId, action }),
+    });
+    fetchDishRequests();
+  };
 
   const fetchBookings = async () => {
     const token = localStorage.getItem("token");
@@ -451,6 +485,68 @@ export default function ClientBookings() {
                     </div>
                   </div>
                 )}
+
+                {/* Custom Dish Requests for this booking */}
+                {dishRequests.filter((r) => r.bookingId === b.id && r.status !== "CANCELLED").map((r) => (
+                  <div key={r.id} className={`mt-4 border p-4 ${r.status === "QUOTED" ? "border-gold/40 bg-gold/5" : "border-dark-border bg-dark"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold">✨ Custom: {r.dishName}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 uppercase tracking-wider ${
+                        r.status === "PENDING" ? "text-amber-400 bg-amber-500/10" :
+                        r.status === "QUOTED" ? "text-gold bg-gold/10" :
+                        r.status === "APPROVED" ? "text-emerald-400 bg-emerald-500/10" :
+                        "text-red-400 bg-red-500/10"
+                      }`}>{r.status}</span>
+                    </div>
+                    <p className="text-cream-muted text-xs mb-2">{r.description}</p>
+
+                    {r.status === "PENDING" && (
+                      <p className="text-cream-muted/50 text-xs">Waiting for chef to send grocery quote...</p>
+                    )}
+
+                    {r.status === "QUOTED" && (
+                      <div className="space-y-3">
+                        <div className="bg-dark border border-dark-border p-3">
+                          <p className="text-sm font-medium text-gold mb-2">🛒 Grocery List — ${r.estimatedGroceryCost?.toFixed(2)}</p>
+                          {r.groceryItems && (() => {
+                            try {
+                              const items = JSON.parse(r.groceryItems) as { item: string; qty: string; estCost: number }[];
+                              return (
+                                <div className="space-y-1">
+                                  {items.map((g, i) => (
+                                    <div key={i} className="flex justify-between text-xs text-cream-muted">
+                                      <span>{g.item} {g.qty && `(${g.qty})`}</span>
+                                      <span>${Number(g.estCost).toFixed(2)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            } catch { return null; }
+                          })()}
+                          {r.chefNotes && <p className="text-xs text-cream-muted/60 mt-2 italic">{r.chefNotes}</p>}
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => respondToDishRequest(r.id, "approve")}
+                            className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
+                          >
+                            ✓ Approve Groceries
+                          </button>
+                          <button
+                            onClick={() => respondToDishRequest(r.id, "reject")}
+                            className="text-red-400 text-sm font-medium hover:text-red-300 transition-colors"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {r.status === "APPROVED" && (
+                      <p className="text-emerald-400 text-xs">✓ Approved — chef will handle groceries (~${r.estimatedGroceryCost?.toFixed(2)})</p>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

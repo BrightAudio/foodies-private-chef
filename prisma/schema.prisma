@@ -48,6 +48,8 @@ model User {
   referralsSent Referral[] @relation("ReferralSender")
   referralsReceived Referral[] @relation("ReferralReceiver")
   insuranceReferrals InsuranceReferral[]
+  dishRequests      DishRequest[] @relation("ClientDishRequests")
+  interests         UserInterest[]
 
   @@index([email])
   @@index([role])
@@ -159,6 +161,7 @@ model ChefProfile {
 
   specials              ChefSpecial[]
   bookings              Booking[]    @relation("ChefBookings")
+  dishRequests          DishRequest[] @relation("ChefDishRequests")
   reviews               Review[]
   consentLogs           ConsentLog[]
   galleryImages         ChefGalleryImage[]
@@ -193,9 +196,39 @@ model ChefSpecial {
   imageUrl        String?
   isWeeklySpecial Boolean  @default(false)
   weekStartDate   DateTime?  // Monday of the week this special is active
+  groceryItems    String?    // JSON array of {item, qty, estCost}
+  estimatedGroceryCost Float? // Total estimated grocery cost
   createdAt       DateTime    @default(now())
 
   @@index([chefProfileId, isWeeklySpecial])
+}
+
+// Custom dish request — client asks Chef/Master Chef for a custom dish
+model DishRequest {
+  id              String      @id @default(uuid())
+  bookingId       String
+  booking         Booking     @relation(fields: [bookingId], references: [id])
+  clientId        String
+  client          User        @relation("ClientDishRequests", fields: [clientId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation("ChefDishRequests", fields: [chefProfileId], references: [id])
+
+  dishName        String
+  description     String      // What the client wants
+  guestCount      Int
+  groceryItems    String?     // JSON array of {item, qty, estCost} — chef fills in
+  estimatedGroceryCost Float? // Chef's estimated grocery cost
+  status          String      @default("PENDING") // PENDING | QUOTED | APPROVED | REJECTED | CANCELLED
+  chefNotes       String?     // Chef's response/notes
+  clientNotes     String?     // Client feedback on quote
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([bookingId])
+  @@index([clientId])
+  @@index([chefProfileId])
+  @@index([status])
 }
 
 model Booking {
@@ -245,6 +278,7 @@ model Booking {
   items           BookingItem[]
   messages        Message[]
   tip             Tip?
+  dishRequests    DishRequest[]
 
   @@index([clientId])
   @@index([chefProfileId])
@@ -452,4 +486,29 @@ model Referral {
 
   @@index([referrerId])
   @@index([referredUserId])
+}
+
+// Interest tracking — powers the "For You" ad-style specials feed
+// Tracks implicit signals: views, searches, bookings, favorites, time-on-page
+model UserInterest {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  // What they engaged with
+  cuisineType     String?  // e.g. "Italian", "Japanese", "BBQ"
+  dishKeyword     String?  // e.g. "lobster", "wagyu", "truffle"
+  chefProfileId   String?  // specific chef they interacted with
+
+  // Signal type and strength
+  signalType      String   // VIEW_CHEF | SEARCH | BOOK | FAVORITE | VIEW_SPECIAL | CLICK_SPECIAL | DWELL
+  signalWeight    Float    @default(1.0) // VIEW=1, SEARCH=2, FAVORITE=3, BOOK=5, DWELL=time-based
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([cuisineType])
+  @@index([dishKeyword])
+  @@index([userId, cuisineType])
+  @@index([userId, dishKeyword])
 }

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
+import { trackInterest, extractDishKeywords } from "@/lib/tracking";
 
 const StripePayment = dynamic(() => import("@/components/StripePayment"), { ssr: false });
 
@@ -23,7 +24,7 @@ interface ChefDetail {
   tierEmoji: string;
   completedJobs: number;
   user: { name: string; email: string };
-  specials: { id: string; name: string; description: string; imageUrl: string | null; isWeeklySpecial?: boolean; price?: number }[];
+  specials: { id: string; name: string; description: string; imageUrl: string | null; isWeeklySpecial?: boolean; price?: number; estimatedGroceryCost?: number | null }[];
   reviews: { id: string; rating: number; comment: string | null; createdAt: string; client: { name: string } }[];
   bgCheckPassed?: boolean;
   insuranceVerified?: boolean;
@@ -54,11 +55,24 @@ export default function ChefProfilePage() {
   const [error, setError] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [paymentStep, setPaymentStep] = useState(false);
+  const [customDish, setCustomDish] = useState({ name: "", description: "" });
+  const [showCustomDish, setShowCustomDish] = useState(false);
 
   useEffect(() => {
     fetch(`/api/chefs/${id}`)
       .then((r) => r.json())
-      .then((data) => { setChef(data); setLoading(false); });
+      .then((data) => {
+        setChef(data);
+        setLoading(false);
+        // Track chef view
+        trackInterest({ signalType: "VIEW_CHEF", chefProfileId: data.id, cuisineType: data.cuisineType || undefined });
+        // Track interest in each special keyword
+        data.specials?.forEach((s: { name: string }) => {
+          extractDishKeywords(s.name).forEach((kw) => {
+            trackInterest({ signalType: "VIEW_SPECIAL", dishKeyword: kw, cuisineType: data.cuisineType || undefined });
+          });
+        });
+      });
   }, [id]);
 
   const toggleItem = (name: string) => {
@@ -66,13 +80,14 @@ export default function ChefProfilePage() {
       setSelectedItems(selectedItems.filter((i) => i !== name));
     } else {
       setSelectedItems([...selectedItems, name]);
+      // Track click on specific dish
+      extractDishKeywords(name).forEach((kw) => {
+        trackInterest({ signalType: "CLICK_SPECIAL", dishKeyword: kw, chefProfileId: id, cuisineType: chef?.cuisineType || undefined });
+      });
     }
   };
 
-  const specialsTotal = chef?.specials
-    ?.filter((s) => selectedItems.includes(s.name))
-    .reduce((sum, s) => sum + (s.price || 0), 0) || 0;
-  const subtotal = (chef?.hourlyRate || 0) + specialsTotal;
+  const subtotal = chef?.hourlyRate || 0;
   const clientServiceFee = Math.round(subtotal * 0.08 * 100) / 100;
   const total = Math.round((subtotal + clientServiceFee) * 100) / 100;
 
@@ -115,8 +130,25 @@ export default function ChefProfilePage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+
+        // Submit custom dish request if filled
+        if (showCustomDish && customDish.name.trim() && customDish.description.trim()) {
+          await fetch("/api/dish-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              bookingId: data.id,
+              chefProfileId: id,
+              dishName: customDish.name.trim(),
+              description: customDish.description.trim(),
+              guestCount: Number(booking.guestCount),
+            }),
+          });
+        }
+
         setSuccess("Booking submitted! The chef will confirm shortly.");
         setBookingOpen(false);
+        trackInterest({ signalType: "BOOK", chefProfileId: id as string, cuisineType: chef?.cuisineType || undefined });
         return;
       }
 
@@ -213,6 +245,9 @@ export default function ChefProfilePage() {
                     <h3 className="font-semibold text-lg mb-1">{special.name}</h3>
                     <p className="text-cream-muted text-sm mb-3 leading-relaxed">{special.description}</p>
                     {special.price != null && special.price > 0 && <p className="text-gold font-bold">${special.price.toFixed(2)}</p>}
+                    {special.estimatedGroceryCost != null && special.estimatedGroceryCost > 0 && (
+                      <p className="text-cream-muted text-xs mt-1">🛒 Groceries: ~${special.estimatedGroceryCost.toFixed(2)}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -265,7 +300,7 @@ export default function ChefProfilePage() {
 
             {chef.specials.length > 0 && (
               <div className="mb-6">
-                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-3">Add Specials to Your Experience</label>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-3">Which dishes interest you?</label>
                 <div className="flex flex-wrap gap-3">
                   {chef.specials.map((s) => {
                     const selected = selectedItems.includes(s.name);
@@ -281,6 +316,43 @@ export default function ChefProfilePage() {
                     );
                   })}
                 </div>
+                <p className="text-cream-muted/40 text-[10px] mt-2">Select dishes you&apos;d like — the chef will include groceries in their prep.</p>
+              </div>
+            )}
+
+            {/* Custom Dish Request — Chef and Master Chef only */}
+            {chef.tier !== "SOUS_CHEF" && (
+              <div className="mb-6">
+                {!showCustomDish ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomDish(true)}
+                    className="w-full border border-dashed border-gold/30 bg-gold/5 px-5 py-3 text-sm text-gold hover:bg-gold/10 transition-colors"
+                  >
+                    ✨ Request a Custom Dish
+                  </button>
+                ) : (
+                  <div className="border border-gold/30 bg-gold/5 p-5 space-y-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium tracking-wider uppercase text-gold">✨ Custom Dish Request</span>
+                      <button type="button" onClick={() => { setShowCustomDish(false); setCustomDish({ name: "", description: "" }); }} className="text-cream-muted text-xs hover:text-cream">Cancel</button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Dish name (e.g. Lobster Thermidor)"
+                      className="w-full border border-dark-border bg-dark px-4 py-3 text-cream text-sm"
+                      value={customDish.name}
+                      onChange={(e) => setCustomDish({ ...customDish, name: e.target.value })}
+                    />
+                    <textarea
+                      placeholder="Describe what you&apos;d like — ingredients, style, dietary needs..."
+                      className="w-full border border-dark-border bg-dark px-4 py-3 h-20 text-cream text-sm"
+                      value={customDish.description}
+                      onChange={(e) => setCustomDish({ ...customDish, description: e.target.value })}
+                    />
+                    <p className="text-cream-muted/60 text-[11px]">The chef will review your request and send a grocery list with estimated costs for your approval.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -299,8 +371,8 @@ export default function ChefProfilePage() {
                 </div>
                 {selectedItems.length > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-cream-muted">Specials ({selectedItems.length})</span>
-                    <span>${specialsTotal.toFixed(2)}</span>
+                    <span className="text-cream-muted">Selected dishes</span>
+                    <span className="text-cream-muted text-xs">{selectedItems.join(", ")}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-cream-muted/50">
@@ -327,6 +399,7 @@ export default function ChefProfilePage() {
                     setSuccess("Payment successful! Your booking is confirmed.");
                     setBookingOpen(false);
                     setPaymentStep(false);
+                    trackInterest({ signalType: "BOOK", chefProfileId: id as string, cuisineType: chef?.cuisineType || undefined });
                   }}
                   onError={(msg) => setError(msg)}
                 />

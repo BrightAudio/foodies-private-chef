@@ -48,6 +48,9 @@ export default function Navbar() {
                 <Link href="/browse" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
                   Browse Chefs
                 </Link>
+                <Link href="/for-you" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
+                  For You
+                </Link>
                 <Link href="/food-trucks" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
                   Food Trucks
                 </Link>

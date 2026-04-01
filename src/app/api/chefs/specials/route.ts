@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, price, imageUrl, isWeeklySpecial } = body;
+  const { name, description, price, imageUrl, isWeeklySpecial, groceryItems, estimatedGroceryCost } = body;
 
   if (!name?.trim() || !description?.trim()) {
     return NextResponse.json({ error: "Name and description are required" }, { status: 400 });
@@ -63,6 +63,16 @@ export async function POST(req: NextRequest) {
 
   if (price != null && (isNaN(Number(price)) || Number(price) < 0)) {
     return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
+  }
+
+  // Validate grocery items if provided
+  let groceryJson: string | null = null;
+  if (groceryItems && Array.isArray(groceryItems)) {
+    groceryJson = JSON.stringify(groceryItems.map((g: { item: string; qty: string; estCost: number }) => ({
+      item: String(g.item || "").trim(),
+      qty: String(g.qty || "").trim(),
+      estCost: Number(g.estCost) || 0,
+    })).filter((g: { item: string }) => g.item));
   }
 
   // If setting as weekly special, clear any existing weekly special for this week
@@ -90,6 +100,8 @@ export async function POST(req: NextRequest) {
       imageUrl: imageUrl || null,
       isWeeklySpecial: !!isWeeklySpecial,
       weekStartDate,
+      groceryItems: groceryJson,
+      estimatedGroceryCost: estimatedGroceryCost ? Number(estimatedGroceryCost) : null,
     },
   });
 

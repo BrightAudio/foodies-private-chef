@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
+import { trackInterest } from "@/lib/tracking";
 
 interface Chef {
   id: string;
@@ -72,6 +73,7 @@ export default function BrowseChefs() {
   const [sortBy, setSortBy] = useState("rating");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -110,6 +112,9 @@ export default function BrowseChefs() {
         body: JSON.stringify({ chefProfileId: chefId }),
       });
       setFavorites((prev) => new Set(prev).add(chefId));
+      // Track favorite as strong interest signal
+      const chef = chefs.find(c => c.id === chefId);
+      trackInterest({ signalType: "FAVORITE", chefProfileId: chefId, cuisineType: chef?.cuisineType || undefined });
     }
   };
 
@@ -123,6 +128,9 @@ export default function BrowseChefs() {
     if (!selectedTier) return;
     setLoading(true);
     setStep("chefs");
+    if (eventDetails.cuisine) {
+      trackInterest({ signalType: "SEARCH", cuisineType: eventDetails.cuisine });
+    }
     const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
     if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
     const res = await fetch(`/api/chefs?${params}`);
@@ -146,6 +154,16 @@ export default function BrowseChefs() {
     if (step === "chefs" && selectedTier) refetchChefs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
+
+  // Track search interest with debounce
+  useEffect(() => {
+    if (!search || search.length < 2) return;
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      trackInterest({ signalType: "SEARCH", cuisineType: search.trim(), dishKeyword: search.trim() });
+    }, 800);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [search]);
 
   const filtered = chefs.filter(
     (c) =>
