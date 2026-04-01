@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
-import { trackInterest, extractDishKeywords } from "@/lib/tracking";
+import { trackInterest, extractDishKeywords, useDwellTracker, useScrollTracker, trackReturnVisit } from "@/lib/tracking";
 
 const StripePayment = dynamic(() => import("@/components/StripePayment"), { ssr: false });
 
@@ -66,6 +66,8 @@ export default function ChefProfilePage() {
         setLoading(false);
         // Track chef view
         trackInterest({ signalType: "VIEW_CHEF", chefProfileId: data.id, cuisineType: data.cuisineType || undefined });
+        // Track return visit (strong signal — they came back to same chef)
+        trackReturnVisit(data.id, data.cuisineType || undefined);
         // Track interest in each special keyword
         data.specials?.forEach((s: { name: string }) => {
           extractDishKeywords(s.name).forEach((kw) => {
@@ -74,6 +76,20 @@ export default function ChefProfilePage() {
         });
       });
   }, [id]);
+
+  // Dwell time — fires when user leaves page (like Facebook time-on-content)
+  useEffect(() => {
+    if (!chef) return;
+    const cleanup = useDwellTracker({ chefProfileId: chef.id, cuisineType: chef.cuisineType || undefined });
+    return cleanup;
+  }, [chef]);
+
+  // Scroll depth — fires at 25% milestones
+  useEffect(() => {
+    if (!chef) return;
+    const cleanup = useScrollTracker({ chefProfileId: chef.id, cuisineType: chef.cuisineType || undefined });
+    return cleanup;
+  }, [chef]);
 
   const toggleItem = (name: string) => {
     if (selectedItems.includes(name)) {

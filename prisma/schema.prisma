@@ -490,6 +490,7 @@ model Referral {
 
 // Interest tracking — powers the "For You" ad-style specials feed
 // Tracks implicit signals: views, searches, bookings, favorites, time-on-page
+// Captures device/location/referrer metadata like Meta Pixel
 model UserInterest {
   id              String   @id @default(uuid())
   userId          String
@@ -501,8 +502,22 @@ model UserInterest {
   chefProfileId   String?  // specific chef they interacted with
 
   // Signal type and strength
-  signalType      String   // VIEW_CHEF | SEARCH | BOOK | FAVORITE | VIEW_SPECIAL | CLICK_SPECIAL | DWELL
+  signalType      String   // VIEW_CHEF | SEARCH | BOOK | FAVORITE | VIEW_SPECIAL | CLICK_SPECIAL | DWELL | SCROLL_DEPTH | RETURN_VISIT
   signalWeight    Float    @default(1.0) // VIEW=1, SEARCH=2, FAVORITE=3, BOOK=5, DWELL=time-based
+
+  // Device & context metadata (like Meta Pixel captures)
+  ipCity          String?  // geo from IP (Vercel x-vercel-ip-city header)
+  ipRegion        String?  // geo from IP (Vercel x-vercel-ip-country-region)
+  ipCountry       String?  // geo from IP (Vercel x-vercel-ip-country)
+  deviceType      String?  // "mobile" | "tablet" | "desktop"
+  referrer        String?  // where they came from (document.referrer)
+  utmSource       String?  // UTM campaign tracking
+  utmMedium       String?
+  utmCampaign     String?
+  pageUrl         String?  // what page they were on when signal fired
+  sessionId       String?  // client-generated session ID for grouping
+  dwellSeconds    Int?     // for DWELL signals: seconds spent on page
+  scrollPercent   Int?     // for SCROLL_DEPTH signals: 0-100
 
   createdAt       DateTime @default(now())
 
@@ -511,4 +526,6 @@ model UserInterest {
   @@index([dishKeyword])
   @@index([userId, cuisineType])
   @@index([userId, dishKeyword])
+  @@index([ipCity])
+  @@index([sessionId])
 }

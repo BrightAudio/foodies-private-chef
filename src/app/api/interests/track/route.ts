@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 
 // Signal weights — how strongly each action indicates interest
+// Mirrors Facebook's engagement scoring: passive signals < active < transactional
 const SIGNAL_WEIGHTS: Record<string, number> = {
   VIEW_CHEF: 1,
   VIEW_SPECIAL: 1.5,
@@ -10,10 +11,13 @@ const SIGNAL_WEIGHTS: Record<string, number> = {
   SEARCH: 2,
   FAVORITE: 3,
   BOOK: 5,
-  DWELL: 0.5, // per 10 seconds of time on page
+  DWELL: 0.5,          // base — dynamically adjusted by duration
+  SCROLL_DEPTH: 0.3,   // per 25% milestone
+  RETURN_VISIT: 4,     // came back to same chef = very strong signal
 };
 
 // POST /api/interests/track — record a user interest signal (fire-and-forget from client)
+// Captures device, location (Vercel headers), referrer, UTM — like Meta Pixel
 export async function POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
@@ -21,13 +25,32 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { signalType, cuisineType, dishKeyword, chefProfileId } = body;
+  const {
+    signalType, cuisineType, dishKeyword, chefProfileId,
+    sessionId, deviceType, referrer, pageUrl,
+    utmSource, utmMedium, utmCampaign,
+    dwellSeconds, scrollPercent,
+  } = body;
 
   if (!signalType || !SIGNAL_WEIGHTS[signalType]) {
     return NextResponse.json({ ok: true }); // Ignore invalid signals silently
   }
 
-  const weight = SIGNAL_WEIGHTS[signalType] || 1;
+  // Dynamic weight calculation
+  let weight = SIGNAL_WEIGHTS[signalType];
+  if (signalType === "DWELL" && dwellSeconds) {
+    // Longer dwell = stronger signal. 0.5 base + 0.1 per 10s, cap at 3.0
+    weight = Math.min(0.5 + (dwellSeconds / 100), 3.0);
+  }
+  if (signalType === "SCROLL_DEPTH" && scrollPercent) {
+    // Deeper scroll = stronger signal: 25%→0.3, 50%→0.6, 75%→0.9, 100%→1.2
+    weight = 0.3 * (scrollPercent / 25);
+  }
+
+  // Geo from Vercel edge — free IP geolocation, no third-party API needed
+  const ipCity = req.headers.get("x-vercel-ip-city") || null;
+  const ipRegion = req.headers.get("x-vercel-ip-country-region") || null;
+  const ipCountry = req.headers.get("x-vercel-ip-country") || null;
 
   await prisma.userInterest.create({
     data: {
@@ -37,6 +60,19 @@ export async function POST(req: NextRequest) {
       cuisineType: cuisineType?.trim() || null,
       dishKeyword: dishKeyword?.trim()?.toLowerCase() || null,
       chefProfileId: chefProfileId || null,
+      // Device & context metadata
+      ipCity: ipCity ? decodeURIComponent(ipCity) : null,
+      ipRegion,
+      ipCountry,
+      deviceType: deviceType || null,
+      referrer: referrer?.substring(0, 500) || null,
+      utmSource: utmSource || null,
+      utmMedium: utmMedium || null,
+      utmCampaign: utmCampaign || null,
+      pageUrl: pageUrl?.substring(0, 200) || null,
+      sessionId: sessionId || null,
+      dwellSeconds: dwellSeconds ? Math.round(dwellSeconds) : null,
+      scrollPercent: scrollPercent ? Math.round(scrollPercent) : null,
     },
   });
 
