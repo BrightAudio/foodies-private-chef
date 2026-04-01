@@ -1,12 +1,21 @@
 "use client";
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 
 function RegisterForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const defaultRole = searchParams.get("role") === "CHEF" ? "CHEF" : "CLIENT";
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      const u = JSON.parse(stored);
+      router.replace(u.role === "CHEF" ? "/chef/dashboard" : u.role === "ADMIN" ? "/admin" : "/browse");
+    }
+  }, [router]);
 
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", role: defaultRole });
   const [error, setError] = useState("");
