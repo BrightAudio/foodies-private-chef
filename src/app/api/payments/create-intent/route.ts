@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Payments not configured" }, { status: 503 });
   }
 
-  const { chefProfileId, date, time, guestCount, specialRequests, address, items } = await req.json();
+  const { chefProfileId, date, time, endTime, guestCount, specialRequests, address, items } = await req.json();
 
   if (!chefProfileId || !date || !time || !guestCount || !address) {
     return NextResponse.json({ error: "Missing required booking fields" }, { status: 400 });
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
       chefProfileId,
       date: new Date(date),
       time,
+      endTime: endTime || null,
       guestCount: Number(guestCount),
       specialRequests: specialRequests || null,
       address,

@@ -240,6 +240,7 @@ model Booking {
 
   date            DateTime
   time            String
+  endTime         String?
   guestCount      Int
   specialRequests String?
   address         String

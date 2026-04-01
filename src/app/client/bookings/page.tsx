@@ -9,6 +9,7 @@ interface Booking {
   id: string;
   date: string;
   time: string;
+  endTime: string | null;
   guestCount: number;
   address: string;
   generalArea: string | null;
@@ -246,7 +247,7 @@ export default function ClientBookings() {
                       Chef {b.chefProfile.user.name}
                     </Link>
                     <p className="text-sm text-cream-muted">
-                      {new Date(b.date).toLocaleDateString()} at {b.time} · {b.guestCount} guests
+                      {new Date(b.date).toLocaleDateString()} at {b.time}{b.endTime ? ` – ${b.endTime}` : ""} · {b.guestCount} guests
                     </p>
                     {b.status === "CONFIRMED" && b.jobStatus && b.jobStatus !== "SCHEDULED" && (
                       <p className="text-sm font-semibold mt-1 text-gold">
@@ -500,16 +501,65 @@ export default function ClientBookings() {
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
                     />
+
+                    {/* Inline Dispute Option */}
+                    {reportingId !== b.id ? (
+                      <button
+                        onClick={() => { setReportingId(b.id); setIncidentDescription(""); }}
+                        className="text-red-400/70 text-sm font-medium hover:text-red-300 transition-colors"
+                      >
+                        ⚠ Had an issue? File a dispute
+                      </button>
+                    ) : (
+                      <div className="border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+                        <h5 className="text-sm font-semibold text-red-400">Dispute Details</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-1">Issue Type</label>
+                            <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className="w-full border border-dark-border bg-dark px-3 py-2 text-cream text-sm">
+                              <option value="SAFETY">Safety Concern</option>
+                              <option value="FOOD_QUALITY">Food Quality</option>
+                              <option value="PROPERTY_DAMAGE">Property Damage</option>
+                              <option value="HARASSMENT">Harassment</option>
+                              <option value="NO_SHOW">No Show</option>
+                              <option value="OTHER">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-1">Severity</label>
+                            <select value={incidentSeverity} onChange={(e) => setIncidentSeverity(e.target.value)} className="w-full border border-dark-border bg-dark px-3 py-2 text-cream text-sm">
+                              <option value="LOW">Low</option>
+                              <option value="MEDIUM">Medium</option>
+                              <option value="HIGH">High</option>
+                              <option value="CRITICAL">Critical</option>
+                            </select>
+                          </div>
+                        </div>
+                        <textarea
+                          value={incidentDescription}
+                          onChange={(e) => setIncidentDescription(e.target.value)}
+                          placeholder="Describe the issue in detail..."
+                          className="w-full border border-dark-border bg-dark px-3 py-2 h-20 text-cream text-sm"
+                        />
+                        <button onClick={() => setReportingId(null)} className="text-cream-muted text-xs hover:text-cream transition-colors">Cancel dispute</button>
+                      </div>
+                    )}
+
                     <div className="flex gap-3">
                       <button
-                        onClick={() => submitReview(b.id, b.chefProfileId)}
+                        onClick={async () => {
+                          if (reportingId === b.id && incidentDescription.trim()) {
+                            await submitIncident(b.id);
+                          }
+                          await submitReview(b.id, b.chefProfileId);
+                        }}
                         disabled={submitting}
                         className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
                       >
-                        {submitting ? "Submitting..." : "Submit Review"}
+                        {submitting ? "Submitting..." : reportingId === b.id && incidentDescription.trim() ? "Submit Review & Dispute" : "Submit Review"}
                       </button>
                       <button
-                        onClick={() => setReviewingId(null)}
+                        onClick={() => { setReviewingId(null); setReportingId(null); }}
                         className="text-cream-muted text-sm hover:text-cream transition-colors"
                       >
                         Cancel

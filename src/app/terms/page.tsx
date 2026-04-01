@@ -174,6 +174,68 @@ export default function TermsPage() {
             </p>
           </section>
 
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">13. Binding Mediation & Arbitration</h2>
+            <div className="bg-dark-card border border-gold/20 p-5">
+              <p className="font-semibold text-cream mb-2">Agreement to Mediate</p>
+              <p>
+                By using the Foodies platform, all users (clients and chefs) agree that any and all disputes,
+                claims, or controversies arising out of or relating to the use of the platform, the services
+                provided through the platform, or these Terms and Conditions shall be resolved exclusively
+                through binding mediation and, if necessary, binding arbitration — <strong>not through
+                litigation in any court of law</strong>.
+              </p>
+              <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+                <li>All parties agree to participate in good-faith mediation administered by a neutral third-party mediator before initiating any arbitration proceeding</li>
+                <li>If mediation does not result in a resolution within thirty (30) days, either party may submit the dispute to binding arbitration conducted in accordance with the rules of the American Arbitration Association (AAA)</li>
+                <li>The arbitrator&apos;s decision shall be final, binding, and enforceable in any court of competent jurisdiction</li>
+                <li>Each party shall bear its own costs and fees associated with mediation and arbitration, unless the arbitrator determines otherwise</li>
+                <li>By agreeing to these terms, you waive any right to participate in a class action lawsuit or class-wide arbitration against Foodies</li>
+              </ul>
+              <p className="mt-4 text-cream-muted text-xs">
+                This mediation and arbitration clause shall survive the termination of your account and these Terms and Conditions.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">14. Limitation of Liability & Hold Harmless</h2>
+            <div className="bg-dark-card border border-red-500/20 p-5">
+              <p className="font-semibold text-cream mb-2">Disclaimer of Liability</p>
+              <p>
+                Foodies operates solely as a technology platform that connects clients with independent
+                private chefs. Foodies is <strong>not</strong> a food service provider, employer, or agent of any
+                chef or client on the platform. To the fullest extent permitted by applicable law:
+              </p>
+              <ul className="list-disc list-inside mt-3 space-y-2 text-cream-muted">
+                <li><strong>Food Safety & Illness:</strong> Foodies shall not be held liable for any foodborne illness, allergic reaction, food poisoning, or any adverse health effect resulting from food prepared, handled, or served by any chef on the platform. Clients acknowledge that they assume all risk associated with consuming food prepared by independent chefs.</li>
+                <li><strong>Property Damage:</strong> Foodies shall not be held responsible for any damage to property — including but not limited to kitchens, appliances, furniture, flooring, or any personal belongings — caused by a chef or any third party during the performance of services booked through the platform.</li>
+                <li><strong>Theft & Loss:</strong> Foodies shall not be liable for any theft, loss, or misappropriation of personal property, valuables, or belongings that occurs during or in connection with a booking. Clients and chefs are solely responsible for securing their own property.</li>
+                <li><strong>Personal Conduct & Behavior:</strong> Foodies is not responsible for the behavior, actions, statements, or conduct of any chef, client, or guest. This includes but is not limited to harassment, assault, verbal abuse, discrimination, or any other interpersonal misconduct that may occur before, during, or after a booking.</li>
+                <li><strong>Bodily Injury:</strong> Foodies shall not be liable for any personal injury, bodily harm, or physical altercation that occurs during or in connection with the performance of services arranged through the platform.</li>
+                <li><strong>Indirect & Consequential Damages:</strong> In no event shall Foodies be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, use, goodwill, or other intangible losses.</li>
+              </ul>
+              <p className="mt-4 font-semibold text-cream">Hold Harmless Agreement</p>
+              <p className="mt-2">
+                By using the Foodies platform, you agree to indemnify, defend, and hold harmless Foodies,
+                its owners, officers, directors, employees, agents, and affiliates from and against any and
+                all claims, damages, losses, liabilities, costs, and expenses (including reasonable
+                attorney&apos;s fees) arising out of or in connection with:
+              </p>
+              <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+                <li>Your use of the platform or services booked through it</li>
+                <li>Any food prepared, served, or consumed in connection with a booking</li>
+                <li>Any interaction between clients, chefs, or guests</li>
+                <li>Any violation of these Terms and Conditions</li>
+                <li>Any violation of applicable laws or regulations by you or anyone acting on your behalf</li>
+              </ul>
+              <p className="mt-4 text-cream-muted text-xs">
+                This limitation of liability and hold harmless agreement applies to the maximum extent permitted
+                by law and shall survive the termination of your account and these Terms and Conditions.
+              </p>
+            </div>
+          </section>
+
           <section className="border-t border-dark-border pt-6">
             <p className="text-cream-muted text-xs">
               Last updated: {new Date().toLocaleDateString()}. Foodies reserves the right to modify these terms

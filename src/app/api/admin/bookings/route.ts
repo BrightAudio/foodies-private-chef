@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
 
   const bookings = await prisma.booking.findMany({
     include: {
-      client: { select: { name: true, email: true } },
+      client: { select: { name: true, email: true, phone: true } },
       chefProfile: {
         select: {
           specialtyDish: true,
           hourlyRate: true,
-          user: { select: { name: true } },
+          user: { select: { name: true, email: true, phone: true } },
         },
       },
     },

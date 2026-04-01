@@ -79,16 +79,17 @@ interface AdminBooking {
   jobStatus: string | null;
   date: string;
   time: string;
+  endTime: string | null;
   guestCount: number;
   total: number;
   address: string;
   generalArea: string | null;
   createdAt: string;
-  client: { name: string; email: string };
+  client: { name: string; email: string; phone: string | null };
   chefProfile: {
     specialtyDish: string;
     hourlyRate: number;
-    user: { name: string };
+    user: { name: string; email: string; phone: string | null };
   };
 }
 
@@ -820,7 +821,7 @@ export default function AdminDashboard() {
                 <tr>
                   <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Client</th>
                   <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Chef</th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Date</th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Date / Time</th>
                   <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Guests</th>
                   <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Total</th>
                   <th className="px-6 py-3 text-xs font-medium tracking-wider uppercase text-cream-muted">Status</th>
@@ -834,14 +835,17 @@ export default function AdminDashboard() {
                     <td className="px-6 py-4">
                       <p className="font-medium text-sm">{b.client.name}</p>
                       <p className="text-[10px] text-cream-muted/50">{b.client.email}</p>
+                      {b.client.phone && <p className="text-[10px] text-cream-muted/50">📞 {b.client.phone}</p>}
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-medium text-sm">{b.chefProfile.user.name}</p>
+                      <p className="text-[10px] text-cream-muted/50">{b.chefProfile.user.email}</p>
+                      {b.chefProfile.user.phone && <p className="text-[10px] text-cream-muted/50">📞 {b.chefProfile.user.phone}</p>}
                       <p className="text-[10px] text-cream-muted/50">${b.chefProfile.hourlyRate}/hr</p>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {new Date(b.date).toLocaleDateString()}
-                      <p className="text-[10px] text-cream-muted/50">{b.time}</p>
+                      <p className="text-[10px] text-cream-muted/50">{b.time}{b.endTime ? ` – ${b.endTime}` : ""}</p>
                     </td>
                     <td className="px-6 py-4 text-sm text-center">{b.guestCount}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gold">${b.total || "—"}</td>

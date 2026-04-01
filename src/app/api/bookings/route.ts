@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { chefProfileId, date, time, guestCount, specialRequests, address, generalArea, items } = await req.json();
+  const { chefProfileId, date, time, endTime, guestCount, specialRequests, address, generalArea, items } = await req.json();
 
   if (!chefProfileId || !date || !time || !guestCount || !address) {
     return NextResponse.json({ error: "Missing required booking fields" }, { status: 400 });
@@ -158,6 +158,7 @@ export async function POST(req: NextRequest) {
       chefProfileId,
       date: new Date(date),
       time,
+      endTime: endTime || null,
       guestCount: Number(guestCount),
       specialRequests: specialRequests ? sanitizeText(specialRequests) : null,
       address,

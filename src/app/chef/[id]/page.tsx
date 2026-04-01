@@ -45,6 +45,7 @@ export default function ChefProfilePage() {
   const [booking, setBooking] = useState({
     date: "",
     time: "",
+    endTime: "",
     guestCount: "2",
     address: "",
     specialRequests: "",
@@ -301,14 +302,18 @@ export default function ChefProfilePage() {
                 <input type="date" className="w-full border border-dark-border bg-dark px-4 py-3 text-cream" value={booking.date} onChange={(e) => setBooking({ ...booking, date: e.target.value })} />
               </div>
               <div>
-                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Time *</label>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Start Time *</label>
                 <input type="time" className="w-full border border-dark-border bg-dark px-4 py-3 text-cream" value={booking.time} onChange={(e) => setBooking({ ...booking, time: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">End Time *</label>
+                <input type="time" className="w-full border border-dark-border bg-dark px-4 py-3 text-cream" value={booking.endTime} onChange={(e) => setBooking({ ...booking, endTime: e.target.value })} />
               </div>
               <div>
                 <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Guest Count *</label>
                 <input type="number" min="1" className="w-full border border-dark-border bg-dark px-4 py-3 text-cream" value={booking.guestCount} onChange={(e) => setBooking({ ...booking, guestCount: e.target.value })} />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Location *</label>
                 <input type="text" className="w-full border border-dark-border bg-dark px-4 py-3 text-cream" placeholder="Your address" value={booking.address} onChange={(e) => setBooking({ ...booking, address: e.target.value })} />
               </div>
