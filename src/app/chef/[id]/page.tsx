@@ -23,7 +23,7 @@ interface ChefDetail {
   tierEmoji: string;
   completedJobs: number;
   user: { name: string; email: string };
-  specials: { id: string; name: string; description: string; imageUrl: string | null }[];
+  specials: { id: string; name: string; description: string; imageUrl: string | null; isWeeklySpecial?: boolean; price?: number }[];
   reviews: { id: string; rating: number; comment: string | null; createdAt: string; client: { name: string } }[];
   bgCheckPassed?: boolean;
   insuranceVerified?: boolean;
@@ -192,8 +192,15 @@ export default function ChefProfilePage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4 tracking-tight">Chef&apos;s Specials</h2>
             <div className="grid md:grid-cols-3 gap-4">
-              {chef.specials.map((special) => (
-                <div key={special.id} className="bg-dark-card border border-dark-border hover:border-gold/30 transition-colors overflow-hidden">
+              {[...chef.specials].sort((a, b) => (b.isWeeklySpecial ? 1 : 0) - (a.isWeeklySpecial ? 1 : 0)).map((special) => (
+                <div key={special.id} className={`bg-dark-card border overflow-hidden transition-colors relative ${
+                  special.isWeeklySpecial ? "border-gold/60 ring-1 ring-gold/30 hover:border-gold" : "border-dark-border hover:border-gold/30"
+                }`}>
+                  {special.isWeeklySpecial && (
+                    <div className="absolute top-2 left-2 bg-gold text-dark px-3 py-1 text-xs font-bold uppercase tracking-wider z-10">
+                      ⭐ Weekly Special
+                    </div>
+                  )}
                   {special.imageUrl && (
                     <div className="h-36 relative">
                       <Image src={special.imageUrl} alt={special.name} fill className="object-cover" sizes="300px" />
@@ -202,7 +209,7 @@ export default function ChefProfilePage() {
                   <div className="p-6">
                     <h3 className="font-semibold text-lg mb-1">{special.name}</h3>
                     <p className="text-cream-muted text-sm mb-3 leading-relaxed">{special.description}</p>
-
+                    {special.price != null && special.price > 0 && <p className="text-gold font-bold">${special.price.toFixed(2)}</p>}
                   </div>
                 </div>
               ))}

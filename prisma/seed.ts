@@ -396,8 +396,12 @@ async function main() {
         boostExpiresAt: chef.boostExpiresAt,
         activationStatus: chef.activationStatus,
 
-        // Specials
-        specials: { create: chef.specials },
+        // Specials — mark first one as this week's special
+        specials: { create: chef.specials.map((s, i) => ({
+          ...s,
+          isWeeklySpecial: i === 0,
+          weekStartDate: i === 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); d.setHours(0,0,0,0); return d; })() : null,
+        })) },
 
         // Gallery
         galleryImages: chef.gallery.length > 0 ? {

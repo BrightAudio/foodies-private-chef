@@ -107,7 +107,7 @@ export default function ChefDashboard() {
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [dashTab, setDashTab] = useState<"bookings" | "gallery" | "availability" | "payments" | "settings">("bookings");
+  const [dashTab, setDashTab] = useState<"bookings" | "specials" | "gallery" | "availability" | "payments" | "settings">("bookings");
 
   // New feature state
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
@@ -123,6 +123,13 @@ export default function ChefDashboard() {
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
+  // Specials state
+  const [specials, setSpecials] = useState<{ id: string; name: string; description: string; price: number; imageUrl: string | null; isWeeklySpecial: boolean; weekStartDate: string | null }[]>([]);
+  const [needsWeeklyRotation, setNeedsWeeklyRotation] = useState(false);
+  const [specialForm, setSpecialForm] = useState({ name: "", description: "", price: "", isWeeklySpecial: false });
+  const [specialSaving, setSpecialSaving] = useState(false);
+  const [showSpecialForm, setShowSpecialForm] = useState(false);
+
   useEffect(() => {
     fetchBookings();
     fetchTierData();
@@ -132,7 +139,62 @@ export default function ChefDashboard() {
     fetchStripeStatus();
     fetchInsurance();
     fetchLegalTerms();
+    fetchSpecials();
   }, [filter]);
+
+  const fetchSpecials = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/chefs/specials", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setSpecials(data.specials);
+        setNeedsWeeklyRotation(data.needsWeeklyRotation);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const createSpecial = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !specialForm.name.trim() || !specialForm.description.trim()) return;
+    setSpecialSaving(true);
+    try {
+      const res = await fetch("/api/chefs/specials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...specialForm, price: specialForm.price ? Number(specialForm.price) : 0 }),
+      });
+      if (res.ok) {
+        setSpecialForm({ name: "", description: "", price: "", isWeeklySpecial: false });
+        setShowSpecialForm(false);
+        fetchSpecials();
+      }
+    } catch { /* ignore */ }
+    setSpecialSaving(false);
+  };
+
+  const setWeeklySpecial = async (specialId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await fetch("/api/chefs/specials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ specialId }),
+      });
+      fetchSpecials();
+    } catch { /* ignore */ }
+  };
+
+  const deleteSpecial = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await fetch(`/api/chefs/specials?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      fetchSpecials();
+    } catch { /* ignore */ }
+  };
 
   const fetchTierData = async () => {
     const token = localStorage.getItem("token");
@@ -540,6 +602,7 @@ export default function ChefDashboard() {
         <div className="flex gap-2 mb-6 border-b border-dark-border pb-4 overflow-x-auto">
           {([
             { key: "bookings" as const, label: "📋 Bookings" },
+            { key: "specials" as const, label: "🍽️ Specials" },
             { key: "gallery" as const, label: "📸 Gallery" },
             { key: "availability" as const, label: "📅 Availability" },
             { key: "payments" as const, label: "💳 Payments" },
@@ -553,12 +616,155 @@ export default function ChefDashboard() {
               }`}
             >
               {t.label}
+              {t.key === "specials" && needsWeeklyRotation && (
+                <span className="ml-2 w-2 h-2 bg-amber-400 rounded-full inline-block animate-pulse" />
+              )}
               {t.key === "payments" && stripeStatus && !stripeStatus.onboarded && (
                 <span className="ml-2 w-2 h-2 bg-amber-400 inline-block" />
               )}
             </button>
           ))}
         </div>
+
+        {/* Specials Tab */}
+        {dashTab === "specials" && (
+          <div className="space-y-6">
+            {/* Weekly Rotation Prompt */}
+            {needsWeeklyRotation && specials.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 p-5">
+                <h3 className="text-amber-400 font-bold text-lg mb-1">🔄 Time to Set This Week&apos;s Special!</h3>
+                <p className="text-cream-muted text-sm mb-3">Pick a dish from your menu to feature as this week&apos;s special. Clients love seeing what&apos;s fresh!</p>
+                <div className="flex flex-wrap gap-2">
+                  {specials.filter(s => !s.isWeeklySpecial).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setWeeklySpecial(s.id)}
+                      className="bg-gold/10 border border-gold/30 text-gold px-4 py-2 text-sm font-medium hover:bg-gold/20 transition-colors"
+                    >
+                      Set &ldquo;{s.name}&rdquo; as Weekly Special
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Your Specials</h2>
+              <button
+                onClick={() => setShowSpecialForm(!showSpecialForm)}
+                className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
+              >
+                {showSpecialForm ? "Cancel" : "+ Add Special"}
+              </button>
+            </div>
+
+            {/* Add Special Form */}
+            {showSpecialForm && (
+              <div className="bg-dark-card border border-dark-border p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Dish Name</label>
+                  <input
+                    type="text"
+                    className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                    placeholder="e.g. Pan-Seared Chilean Sea Bass"
+                    value={specialForm.name}
+                    onChange={(e) => setSpecialForm({ ...specialForm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Description</label>
+                  <textarea
+                    className="w-full border border-dark-border bg-dark px-4 py-3 h-20 text-cream"
+                    placeholder="Describe the dish, ingredients, and what makes it special..."
+                    value={specialForm.description}
+                    onChange={(e) => setSpecialForm({ ...specialForm, description: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Price ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
+                      placeholder="0.00"
+                      value={specialForm.price}
+                      onChange={(e) => setSpecialForm({ ...specialForm, price: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex-1 flex items-end">
+                    <label className="flex items-center gap-3 cursor-pointer pb-3">
+                      <input
+                        type="checkbox"
+                        checked={specialForm.isWeeklySpecial}
+                        onChange={(e) => setSpecialForm({ ...specialForm, isWeeklySpecial: e.target.checked })}
+                        className="w-5 h-5 accent-gold"
+                      />
+                      <span className="text-sm text-cream-muted">Set as this week&apos;s special</span>
+                    </label>
+                  </div>
+                </div>
+                <button
+                  onClick={createSpecial}
+                  disabled={specialSaving || !specialForm.name.trim() || !specialForm.description.trim()}
+                  className="bg-gold text-dark px-6 py-3 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                >
+                  {specialSaving ? "Saving..." : "Add Special"}
+                </button>
+              </div>
+            )}
+
+            {/* Specials List */}
+            {specials.length === 0 ? (
+              <div className="text-center py-16 bg-dark-card border border-dark-border">
+                <p className="text-4xl mb-4">🍽️</p>
+                <p className="text-cream-muted mb-2">No specials yet</p>
+                <p className="text-cream-muted text-sm">Add your signature dishes so clients can see what you offer!</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {specials.map((s) => (
+                  <div key={s.id} className={`bg-dark-card border overflow-hidden relative ${
+                    s.isWeeklySpecial ? "border-gold/60 ring-1 ring-gold/30" : "border-dark-border"
+                  }`}>
+                    {s.isWeeklySpecial && (
+                      <div className="absolute top-2 left-2 bg-gold text-dark px-3 py-1 text-xs font-bold uppercase tracking-wider z-10">
+                        ⭐ This Week&apos;s Special
+                      </div>
+                    )}
+                    {s.imageUrl && (
+                      <div className="h-36 relative">
+                        <img src={s.imageUrl} alt={s.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg mb-1">{s.name}</h3>
+                      <p className="text-cream-muted text-sm mb-3 leading-relaxed line-clamp-2">{s.description}</p>
+                      {s.price > 0 && <p className="text-gold font-bold mb-3">${s.price.toFixed(2)}</p>}
+                      <div className="flex gap-2">
+                        {!s.isWeeklySpecial && (
+                          <button
+                            onClick={() => setWeeklySpecial(s.id)}
+                            className="text-xs bg-gold/10 border border-gold/30 text-gold px-3 py-1.5 hover:bg-gold/20 transition-colors"
+                          >
+                            Set as Weekly Special
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteSpecial(s.id)}
+                          className="text-xs bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-1.5 hover:bg-red-500/20 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Gallery Tab */}
         {dashTab === "gallery" && (

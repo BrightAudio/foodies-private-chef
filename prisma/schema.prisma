@@ -191,7 +191,11 @@ model ChefSpecial {
   description     String
   price           Float    @default(0)
   imageUrl        String?
+  isWeeklySpecial Boolean  @default(false)
+  weekStartDate   DateTime?  // Monday of the week this special is active
   createdAt       DateTime    @default(now())
+
+  @@index([chefProfileId, isWeeklySpecial])
 }
 
 model Booking {
