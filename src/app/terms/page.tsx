@@ -112,7 +112,7 @@ export default function TermsPage() {
               the booking is automatically confirmed and payment is released to the chef.
             </p>
             <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
-              <li>Payment is held in escrow until the client confirms completion or the 24-hour window expires</li>
+              <li>Payment is held securely until the client confirms completion or the 24-hour window expires</li>
               <li>Clients are encouraged to review the chef&apos;s work and leave a rating after confirmation</li>
               <li>If a client believes the service was not rendered or was unsatisfactory, they must file a dispute within the 24-hour confirmation window</li>
             </ul>

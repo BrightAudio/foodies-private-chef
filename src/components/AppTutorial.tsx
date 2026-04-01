@@ -12,7 +12,7 @@ const CLIENT_STEPS: TutorialStep[] = [
   { title: "Your For You Feed", description: "Discover trending dishes and top-rated specials from private chefs near you.", icon: "✨" },
   { title: "Book an Experience", description: "Choose your date, time, and guest count. Your chef handles everything including groceries.", icon: "📅" },
   { title: "Request Custom Dishes", description: "Chef and Master Chef tiers accept custom dish requests. Submit your idea and approve the grocery list.", icon: "🍽️" },
-  { title: "Pay Securely", description: "Payments are held in escrow until your event is complete. Rate and review your chef after.", icon: "💳" },
+  { title: "Pay Securely", description: "Payments are held securely until your event is complete. Rate and review your chef after.", icon: "💳" },
 ];
 
 const CHEF_STEPS: TutorialStep[] = [
