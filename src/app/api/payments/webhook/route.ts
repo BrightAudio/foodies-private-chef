@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
 // POST /api/payments/webhook — Stripe webhook handler
-// Handles the full escrow lifecycle:
+// Handles platform events (STRIPE_WEBHOOK_SECRET) and connected-account events (STRIPE_CONNECT_WEBHOOK_SECRET)
 //   1. payment_intent.amount_capturable_updated → payment authorized (escrow hold)
 //   2. payment_intent.succeeded → payment captured (escrow released)
 //   3. charge.refunded → refund processed
 //   4. payout.paid → chef received their money
-//   5. account.updated → Connect account status changes
+//   5. payout.failed → chef payout failed
+//   6. account.updated → Connect account status changes
 export async function POST(req: NextRequest) {
   if (!stripe) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
@@ -17,15 +18,32 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
 
-  if (!sig || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: "Missing signature or webhook secret" }, { status: 400 });
+  if (!sig) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+  }
+
+  // Try platform secret first, then connected-accounts secret
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+  ].filter(Boolean) as string[];
+
+  if (secrets.length === 0) {
+    return NextResponse.json({ error: "No webhook secrets configured" }, { status: 500 });
   }
 
   let event;
-  try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, sig, secret);
+      break;
+    } catch {
+      // Try next secret
+    }
+  }
+
+  if (!event) {
+    console.error("Webhook signature verification failed with all secrets");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -84,9 +102,6 @@ export async function POST(req: NextRequest) {
 
     // Chef received their payout
     case "payout.paid": {
-      // Stripe sends this when a payout to a Connect account succeeds
-      // We can update all bookings for that connect account that are in RELEASED status
-      const payout = event.data.object;
       const connectAccountId = event.account;
       if (connectAccountId) {
         const chef = await prisma.chefProfile.findFirst({
@@ -100,6 +115,28 @@ export async function POST(req: NextRequest) {
             },
             data: { payoutStatus: "PAID" },
           });
+        }
+      }
+      break;
+    }
+
+    // Chef payout failed (bad bank details, etc.)
+    case "payout.failed": {
+      const payout = event.data.object;
+      const connectAccountId = event.account;
+      if (connectAccountId) {
+        const chef = await prisma.chefProfile.findFirst({
+          where: { stripeConnectAccountId: connectAccountId },
+        });
+        if (chef) {
+          await prisma.booking.updateMany({
+            where: {
+              chefProfileId: chef.id,
+              payoutStatus: "RELEASED",
+            },
+            data: { payoutStatus: "FAILED" },
+          });
+          console.error(`Payout failed for chef ${chef.id}, account ${connectAccountId}, reason: ${payout.failure_message}`);
         }
       }
       break;
