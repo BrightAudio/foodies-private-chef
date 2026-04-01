@@ -1,8 +1,15 @@
+"use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import FeaturedTrucks from "@/components/FeaturedTrucks";
 
 export default function Home() {
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  useEffect(() => {
+    const stored = localStorage.getItem("user");
+    if (stored) setUser(JSON.parse(stored));
+  }, []);
   return (
     <>
       <Navbar />
@@ -36,12 +43,14 @@ export default function Home() {
               >
                 Browse Chefs
               </Link>
-              <Link
-                href="/register?role=CHEF"
-                className="border border-gold/40 text-gold px-10 py-4 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold/10 transition-colors"
-              >
-                Become a Chef
-              </Link>
+              {!user && (
+                <Link
+                  href="/register?role=CHEF"
+                  className="border border-gold/40 text-gold px-10 py-4 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold/10 transition-colors"
+                >
+                  Become a Chef
+                </Link>
+              )}
             </div>
 
             {/* Trust indicators */}
@@ -83,29 +92,31 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Chef CTA */}
-        <section className="py-32 border-t border-dark-border relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gold/3 rounded-full blur-3xl" />
-          <div className="relative max-w-3xl mx-auto px-4 text-center">
-            <p className="text-gold text-xs font-medium tracking-[0.25em] uppercase mb-4">
-              For Chefs
-            </p>
-            <h2 className="text-4xl font-bold mb-6 tracking-tight">Join the Foodies Network</h2>
-            <p className="text-lg text-cream-muted mb-4 leading-relaxed">
-              Set your own rates, showcase your signature dishes, and connect with clients
-              seeking an elevated private dining experience.
-            </p>
-            <p className="text-sm text-cream-muted/60 mb-10">
-              Requirements: ServSafe certification, general liability insurance, food product liability insurance, and a background check.
-            </p>
-            <Link
-              href="/chef/onboarding"
-              className="inline-block bg-gold text-dark px-10 py-4 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors"
-            >
-              Apply Now
-            </Link>
-          </div>
-        </section>
+        {/* Chef CTA — only show when not signed in */}
+        {!user && (
+          <section className="py-32 border-t border-dark-border relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gold/3 rounded-full blur-3xl" />
+            <div className="relative max-w-3xl mx-auto px-4 text-center">
+              <p className="text-gold text-xs font-medium tracking-[0.25em] uppercase mb-4">
+                For Chefs
+              </p>
+              <h2 className="text-4xl font-bold mb-6 tracking-tight">Join the Foodies Network</h2>
+              <p className="text-lg text-cream-muted mb-4 leading-relaxed">
+                Set your own rates, showcase your signature dishes, and connect with clients
+                seeking an elevated private dining experience.
+              </p>
+              <p className="text-sm text-cream-muted/60 mb-10">
+                Requirements: ServSafe certification, general liability insurance, food product liability insurance, and a background check.
+              </p>
+              <Link
+                href="/chef/onboarding"
+                className="inline-block bg-gold text-dark px-10 py-4 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors"
+              >
+                Apply Now
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* Featured Food Trucks */}
         <FeaturedTrucks />
