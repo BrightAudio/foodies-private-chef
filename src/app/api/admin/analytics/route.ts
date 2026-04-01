@@ -63,6 +63,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ===== ENGAGEMENT / INTEREST SIGNALS =====
+  const [totalSignals, recentSignals, signalsByType, topCuisines, topDishes, topCities, deviceBreakdown, activeTrackedUsers] = await Promise.all([
+    prisma.userInterest.count(),
+    prisma.userInterest.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+    prisma.userInterest.groupBy({ by: ["signalType"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
+    prisma.userInterest.groupBy({ by: ["cuisineType"], where: { cuisineType: { not: null } }, _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 10 }),
+    prisma.userInterest.groupBy({ by: ["dishKeyword"], where: { dishKeyword: { not: null } }, _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 10 }),
+    prisma.userInterest.groupBy({ by: ["ipCity"], where: { ipCity: { not: null } }, _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 10 }),
+    prisma.userInterest.groupBy({ by: ["deviceType"], where: { deviceType: { not: null } }, _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
+    prisma.userInterest.groupBy({ by: ["userId"], _count: { id: true } }),
+  ]);
+
   // Top chefs by revenue
   const topChefs = await prisma.chefProfile.findMany({
     where: { isApproved: true },
@@ -105,5 +117,16 @@ export async function GET(req: NextRequest) {
     },
     monthlyData: Object.entries(monthlyData).map(([month, data]) => ({ month, ...data })),
     topChefs: topChefsData,
+    engagement: {
+      totalSignals,
+      recentSignals,
+      trackedUsers: activeTrackedUsers.length,
+      avgSignalsPerUser: activeTrackedUsers.length > 0 ? Math.round(totalSignals / activeTrackedUsers.length) : 0,
+      signalsByType: signalsByType.map((s) => ({ type: s.signalType, count: s._count.id })),
+      topCuisines: topCuisines.map((c) => ({ name: c.cuisineType!, count: c._count.id })),
+      topDishes: topDishes.map((d) => ({ name: d.dishKeyword!, count: d._count.id })),
+      topCities: topCities.map((c) => ({ name: c.ipCity!, count: c._count.id })),
+      deviceBreakdown: deviceBreakdown.map((d) => ({ type: d.deviceType!, count: d._count.id })),
+    },
   });
 }

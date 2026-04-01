@@ -163,6 +163,17 @@ interface AnalyticsData {
   revenue: { totalRevenue: number; platformRevenue: number; chefPayouts: number; totalTips: number };
   monthlyData: { month: string; bookings: number; revenue: number; platformFee: number }[];
   topChefs: { name: string; tier: string; revenue: number; jobs: number; avgRating: number }[];
+  engagement: {
+    totalSignals: number;
+    recentSignals: number;
+    trackedUsers: number;
+    avgSignalsPerUser: number;
+    signalsByType: { type: string; count: number }[];
+    topCuisines: { name: string; count: number }[];
+    topDishes: { name: string; count: number }[];
+    topCities: { name: string; count: number }[];
+    deviceBreakdown: { type: string; count: number }[];
+  };
 }
 
 interface AuditEntry {
@@ -1034,6 +1045,100 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* ===== ENGAGEMENT SIGNALS ===== */}
+              <div className="bg-dark-card border border-dark-border p-6">
+                <h3 className="text-xs font-bold tracking-wider uppercase text-cream-muted mb-4">📊 Engagement Signals</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-dark border border-dark-border p-4">
+                    <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Total Signals</p>
+                    <p className="text-2xl font-bold text-blue-400 mt-1">{analytics.engagement.totalSignals.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-dark border border-dark-border p-4">
+                    <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Last 30 Days</p>
+                    <p className="text-2xl font-bold text-emerald-400 mt-1">{analytics.engagement.recentSignals.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-dark border border-dark-border p-4">
+                    <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Tracked Users</p>
+                    <p className="text-2xl font-bold text-purple-400 mt-1">{analytics.engagement.trackedUsers}</p>
+                  </div>
+                  <div className="bg-dark border border-dark-border p-4">
+                    <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Avg Signals / User</p>
+                    <p className="text-2xl font-bold text-gold mt-1">{analytics.engagement.avgSignalsPerUser}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Signal Types */}
+                  <div>
+                    <h4 className="text-[10px] font-bold tracking-wider uppercase text-cream-muted mb-3">Signal Breakdown</h4>
+                    <div className="space-y-2">
+                      {analytics.engagement.signalsByType.map((s) => {
+                        const maxCount = analytics.engagement.signalsByType[0]?.count || 1;
+                        return (
+                          <div key={s.type} className="flex items-center gap-3">
+                            <span className="text-xs text-cream-muted w-32 shrink-0 font-mono">{s.type}</span>
+                            <div className="flex-1 bg-dark-border h-5 relative">
+                              <div className="bg-blue-500/40 h-full" style={{ width: `${Math.round((s.count / maxCount) * 100)}%` }} />
+                            </div>
+                            <span className="text-xs font-bold w-12 text-right">{s.count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Top Cuisines */}
+                  <div>
+                    <h4 className="text-[10px] font-bold tracking-wider uppercase text-cream-muted mb-3">Top Cuisines</h4>
+                    <div className="space-y-2">
+                      {analytics.engagement.topCuisines.map((c, i) => (
+                        <div key={c.name} className="flex items-center justify-between border-b border-dark-border pb-1">
+                          <span className="text-sm"><span className="text-cream-muted/40 mr-2">#{i + 1}</span>{c.name}</span>
+                          <span className="text-xs font-bold text-gold">{c.count} signals</span>
+                        </div>
+                      ))}
+                      {analytics.engagement.topCuisines.length === 0 && <p className="text-xs text-cream-muted/50">No cuisine data yet</p>}
+                    </div>
+                  </div>
+
+                  {/* Top Dishes */}
+                  <div>
+                    <h4 className="text-[10px] font-bold tracking-wider uppercase text-cream-muted mb-3">Top Dish Keywords</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {analytics.engagement.topDishes.map((d) => (
+                        <span key={d.name} className="text-xs px-3 py-1.5 border border-gold/20 bg-gold/5 text-gold">
+                          {d.name} <span className="text-cream-muted/50 ml-1">({d.count})</span>
+                        </span>
+                      ))}
+                      {analytics.engagement.topDishes.length === 0 && <p className="text-xs text-cream-muted/50">No dish data yet</p>}
+                    </div>
+                  </div>
+
+                  {/* Device & Location */}
+                  <div>
+                    <h4 className="text-[10px] font-bold tracking-wider uppercase text-cream-muted mb-3">Devices & Locations</h4>
+                    {analytics.engagement.deviceBreakdown.length > 0 && (
+                      <div className="flex gap-3 mb-3">
+                        {analytics.engagement.deviceBreakdown.map((d) => (
+                          <span key={d.type} className="text-xs px-3 py-1.5 border border-dark-border bg-dark">
+                            {d.type === "mobile" ? "📱" : d.type === "tablet" ? "📋" : "🖥️"} {d.type} <span className="text-cream-muted/50">({d.count})</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      {analytics.engagement.topCities.map((c, i) => (
+                        <div key={c.name} className="flex items-center justify-between text-sm">
+                          <span><span className="text-cream-muted/40 mr-2">#{i + 1}</span>{c.name}</span>
+                          <span className="text-xs text-cream-muted">{c.count}</span>
+                        </div>
+                      ))}
+                      {analytics.engagement.topCities.length === 0 && <p className="text-xs text-cream-muted/50">No location data yet</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <p className="text-cream-muted">Loading analytics...</p>

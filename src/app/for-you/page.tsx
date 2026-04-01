@@ -113,21 +113,16 @@ export default function ForYouPage() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight mb-2">For You</h1>
           <p className="text-cream-muted text-sm">
-            {personalized
-              ? "Dishes curated based on your tastes and interests"
-              : "Trending dishes from top private chefs"}
+            Trending dishes from top private chefs
           </p>
           {meta && personalized && meta.topCuisines.length > 0 && (
             <div className="flex items-center gap-2 mt-3">
-              <span className="text-[10px] text-cream-muted/50 tracking-wider uppercase">Your tastes:</span>
+              <span className="text-[10px] text-cream-muted/50 tracking-wider uppercase">Popular in:</span>
               {meta.topCuisines.map((c) => (
                 <span key={c} className="text-[10px] px-2 py-0.5 border border-gold/20 bg-gold/5 text-gold tracking-wider uppercase">
                   {c}
                 </span>
               ))}
-              <span className="text-[10px] text-cream-muted/30 ml-1">
-                {meta.signalCount} signals analyzed
-              </span>
             </div>
           )}
         </div>

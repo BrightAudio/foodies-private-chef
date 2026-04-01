@@ -9,7 +9,7 @@ interface TutorialStep {
 
 const CLIENT_STEPS: TutorialStep[] = [
   { title: "Browse Private Chefs", description: "Explore chefs by tier—Sous Chef, Chef, or Master Chef—and find the perfect fit for your event.", icon: "🔍" },
-  { title: "Your For You Feed", description: "Get personalized dish recommendations based on your tastes and browsing activity.", icon: "✨" },
+  { title: "Your For You Feed", description: "Discover trending dishes and top-rated specials from private chefs near you.", icon: "✨" },
   { title: "Book an Experience", description: "Choose your date, time, and guest count. Your chef handles everything including groceries.", icon: "📅" },
   { title: "Request Custom Dishes", description: "Chef and Master Chef tiers accept custom dish requests. Submit your idea and approve the grocery list.", icon: "🍽️" },
   { title: "Pay Securely", description: "Payments are held in escrow until your event is complete. Rate and review your chef after.", icon: "💳" },
