@@ -69,7 +69,10 @@ export default function ChefProfilePage() {
     }
   };
 
-  const subtotal = chef?.hourlyRate || 0;
+  const specialsTotal = chef?.specials
+    ?.filter((s) => selectedItems.includes(s.name))
+    .reduce((sum, s) => sum + (s.price || 0), 0) || 0;
+  const subtotal = (chef?.hourlyRate || 0) + specialsTotal;
   const clientServiceFee = Math.round(subtotal * 0.08 * 100) / 100;
   const total = Math.round((subtotal + clientServiceFee) * 100) / 100;
 
@@ -296,8 +299,8 @@ export default function ChefProfilePage() {
                 </div>
                 {selectedItems.length > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-cream-muted">Requested specials</span>
-                    <span className="text-cream-muted text-xs">{selectedItems.join(", ")}</span>
+                    <span className="text-cream-muted">Specials ({selectedItems.length})</span>
+                    <span>${specialsTotal.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-cream-muted/50">

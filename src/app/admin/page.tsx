@@ -654,10 +654,10 @@ export default function AdminDashboard() {
                       {/* Actions */}
                       <div className="flex flex-wrap gap-3 pt-2 border-t border-dark-border">
                         {/* Full Approval — one-click approve everything */}
-                        {(!chef.isApproved || chef.verificationStatus !== "APPROVED" || chef.bgCheckStatus !== "CLEARED") && (
+                        {(!chef.isApproved || chef.verificationStatus !== "APPROVED" || chef.bgCheckStatus !== "CLEAR") && (
                           <button
                             type="button"
-                            onClick={() => updateChef(chef.id, { isApproved: true, bgCheckStatus: "CLEARED", verificationStatus: "APPROVED", idVerificationStatus: "VERIFIED" })}
+                            onClick={() => updateChef(chef.id, { isApproved: true, bgCheckStatus: "CLEAR", verificationStatus: "APPROVED", idVerificationStatus: "VERIFIED" })}
                             className="bg-gold text-dark px-4 py-2 text-xs font-bold tracking-wider uppercase hover:bg-gold-light transition-colors"
                           >
                             Full Approval
@@ -667,7 +667,7 @@ export default function AdminDashboard() {
                           <>
                             <button
                               type="button"
-                              onClick={() => updateChef(chef.id, { bgCheckStatus: "CLEARED" })}
+                              onClick={() => updateChef(chef.id, { bgCheckStatus: "CLEAR" })}
                               className="bg-emerald-500/10 text-emerald-400 px-4 py-2 text-xs font-bold tracking-wider uppercase hover:bg-emerald-500/20 transition-colors"
                             >
                               Clear BG Check
@@ -717,7 +717,7 @@ export default function AdminDashboard() {
                             Revoke Approval
                           </button>
                         ) : (
-                          !chef.isApproved && chef.bgCheckStatus === "CLEARED" && (
+                          !chef.isApproved && chef.bgCheckStatus === "CLEAR" && (
                             <button
                               type="button"
                               onClick={() => updateChef(chef.id, { isApproved: true })}

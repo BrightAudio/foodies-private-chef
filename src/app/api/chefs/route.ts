@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       avgRating: Math.round(avgRating * 10) / 10,
       reviewCount: ratings.length,
       // Trust badges
-      bgCheckPassed: chef.bgCheckStatus === "clear",
+      bgCheckPassed: chef.bgCheckStatus === "CLEAR",
       insuranceVerified: chef.insuranceVerified,
       trustScore: chef.trustScore,
       boostActive: chef.boostActive && chef.boostExpiresAt && new Date(chef.boostExpiresAt) > new Date(),

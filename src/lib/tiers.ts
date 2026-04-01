@@ -143,7 +143,7 @@ export function determineActivationStatus(chef: {
   if ((chef.openIncidents ?? 0) > 0) return "RESTRICTED";
 
   // Active if fully compliant
-  if (chef.isApproved && chef.bgCheckStatus === "clear" && chef.insuranceStatus === "verified") {
+  if (chef.isApproved && chef.bgCheckStatus === "CLEAR" && chef.insuranceStatus === "verified") {
     return "ACTIVE";
   }
 

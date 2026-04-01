@@ -169,7 +169,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const trustScore = calculateTrustScore({
         avgRating,
         completedJobs: newCompletedJobs,
-        bgCheckPassed: chefProfile.bgCheckStatus === "clear",
+        bgCheckPassed: chefProfile.bgCheckStatus === "CLEAR",
         insuranceVerified: chefProfile.insuranceVerified,
         openIncidents,
         tier: newTier,

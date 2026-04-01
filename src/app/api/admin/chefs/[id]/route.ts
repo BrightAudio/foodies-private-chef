@@ -32,9 +32,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     updateData.activationStatus = activationStatus;
   }
 
-  if (bgCheckStatus && ["CLEARED", "FAILED", "PENDING", "NOT_SUBMITTED"].includes(bgCheckStatus)) {
+  if (bgCheckStatus && ["CLEAR", "FAILED", "PENDING", "NOT_SUBMITTED"].includes(bgCheckStatus)) {
     updateData.bgCheckStatus = bgCheckStatus;
-    if (bgCheckStatus === "CLEARED") {
+    if (bgCheckStatus === "CLEAR") {
       updateData.bgCheckClearedAt = new Date();
     }
   }
