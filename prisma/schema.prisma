@@ -269,7 +269,12 @@ model Booking {
   cancellationFee       Float?     // Actual fee charged
   refundAmount          Float?     // Amount refunded to client
 
-  status          String      @default("PENDING") // PENDING | CONFIRMED | COMPLETED | CANCELLED
+  status          String      @default("PENDING") // PENDING | CONFIRMED | PENDING_COMPLETION | COMPLETED | CANCELLED
+
+  // Client completion confirmation
+  chefCompletedAt     DateTime?  // When chef marked complete
+  clientConfirmedAt   DateTime?  // When client confirmed completion
+  autoConfirmAt       DateTime?  // Auto-confirm deadline (24h after chef marks complete)
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -279,12 +284,14 @@ model Booking {
   messages        Message[]
   tip             Tip?
   dishRequests    DishRequest[]
+  locationCheckins LocationCheckin[]
 
   @@index([clientId])
   @@index([chefProfileId])
   @@index([status])
   @@index([date])
   @@index([paymentStatus])
+  @@index([autoConfirmAt])
 }
 
 model BookingItem {
@@ -528,4 +535,21 @@ model UserInterest {
   @@index([userId, dishKeyword])
   @@index([ipCity])
   @@index([sessionId])
+}
+
+// Silent location check-ins for dispute resolution (internal only)
+model LocationCheckin {
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  userId      String   // Chef's userId
+  latitude    Float
+  longitude   Float
+  accuracy    Float?   // GPS accuracy in meters
+  checkinType String   // ARRIVAL | PERIODIC | DEPARTURE
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([userId])
+  @@index([bookingId, createdAt])
 }

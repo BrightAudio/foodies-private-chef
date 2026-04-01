@@ -18,6 +18,7 @@ function RegisterForm() {
   }, [router]);
 
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", role: defaultRole });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
@@ -33,6 +34,7 @@ function RegisterForm() {
       return;
     }
     if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    if (!acceptedTerms) { setError("You must accept the Terms of Service to continue"); return; }
 
     setLoading(true);
 
@@ -158,6 +160,22 @@ function RegisterForm() {
                 <option value="CHEF">Sign Up as a Chef</option>
               </select>
             </div>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 w-4 h-4 accent-gold shrink-0"
+              />
+              <span className="text-xs text-cream-muted leading-relaxed">
+                I have read and agree to the Foodies{" "}
+                <Link href="/terms" target="_blank" className="text-gold underline hover:text-gold-light">
+                  Terms of Service
+                </Link>
+                , including the non-circumvention agreement, dispute resolution policy, and payment terms.
+              </span>
+            </label>
 
             {error && <p className="text-red-400 text-sm">{error}</p>}
 

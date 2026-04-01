@@ -7,6 +7,7 @@ type NotificationType =
   | "BOOKING_CREATED"
   | "BOOKING_CONFIRMED"
   | "BOOKING_CANCELLED"
+  | "BOOKING_COMPLETED"
   | "MESSAGE"
   | "TIP"
   | "BG_CHECK_UPDATE"

@@ -187,6 +187,7 @@ export default function ClientBookings() {
   const statusColors: Record<string, string> = {
     PENDING: "bg-gold/10 text-gold",
     CONFIRMED: "bg-blue-500/10 text-blue-400",
+    PENDING_COMPLETION: "bg-amber-500/10 text-amber-400",
     COMPLETED: "bg-emerald-500/10 text-emerald-400",
     CANCELLED: "bg-red-500/10 text-red-400",
   };
@@ -197,6 +198,24 @@ export default function ClientBookings() {
     ARRIVED: "✅ Your chef has arrived",
     IN_PROGRESS: "🍳 Your chef is cooking",
     COMPLETED: "✨ Experience complete",
+  };
+
+  const confirmCompletion = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: "CONFIRM_COMPLETE" }),
+      });
+      if (res.ok) {
+        fetchBookings();
+        setReviewingId(bookingId); // Auto-prompt review
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to confirm");
+      }
+    } catch { alert("Failed to confirm completion"); }
   };
 
   return (
@@ -268,6 +287,19 @@ export default function ClientBookings() {
 
                 {/* Actions */}
                 <div className="flex gap-2 flex-wrap items-center">
+                  {b.status === "PENDING_COMPLETION" && (
+                    <div className="w-full bg-amber-500/10 border border-amber-500/30 p-4 mb-2">
+                      <p className="text-sm text-amber-300 mb-3">
+                        Your chef has marked this experience as complete. Please confirm to release payment.
+                      </p>
+                      <button
+                        onClick={() => confirmCompletion(b.id)}
+                        className="bg-emerald-600 text-white px-6 py-2.5 text-sm font-semibold tracking-wider uppercase hover:bg-emerald-500 transition-colors"
+                      >
+                        ✅ Confirm Experience Complete
+                      </button>
+                    </div>
+                  )}
                   {(b.status === "PENDING" || b.status === "CONFIRMED") && (
                     <button
                       onClick={() => previewCancel(b.id)}
@@ -295,7 +327,7 @@ export default function ClientBookings() {
                   {b.tip && (
                     <span className="text-sm text-emerald-400">💰 Tipped ${b.tip.amount}</span>
                   )}
-                  {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
+                  {b.status !== "CANCELLED" && b.status !== "COMPLETED" && b.status !== "PENDING_COMPLETION" && (
                     <a
                       href={`/messages/${b.id}`}
                       className="border border-dark-border px-4 py-2 text-sm font-medium text-cream-muted hover:border-gold/30 hover:text-cream transition-colors"
@@ -303,7 +335,7 @@ export default function ClientBookings() {
                       💬 Message Chef
                     </a>
                   )}
-                  {(b.status === "COMPLETED" || b.status === "CANCELLED") && (
+                  {(b.status === "COMPLETED" || b.status === "CANCELLED" || b.status === "PENDING_COMPLETION") && (
                     <button
                       onClick={() => { setReportingId(b.id); setIncidentDescription(""); }}
                       className="text-red-400/70 text-sm font-medium hover:text-red-300 transition-colors"

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { sendBookingConfirmedToClient, sendBookingCompletedToClient } from "@/lib/email";
 import { calculateTier, calculateTrustScore } from "@/lib/tiers";
-import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/notifications";
+import { notifyBookingConfirmed, notifyBookingCancelled, createNotification } from "@/lib/notifications";
 import { capturePayment, isStripeEnabled } from "@/lib/stripe";
 
 // PATCH /api/bookings/[id] — update booking status
@@ -55,12 +55,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json(updated);
   }
 
-  // Handle booking status updates (Confirm, Complete, Cancel)
+  // Handle booking status updates
   if (!status) {
     return NextResponse.json({ error: "status or jobStatus required" }, { status: 400 });
   }
 
-  const validStatuses = ["CONFIRMED", "COMPLETED", "CANCELLED"];
+  const validStatuses = ["CONFIRMED", "COMPLETED", "PENDING_COMPLETION", "CONFIRM_COMPLETE", "CANCELLED"];
   if (!validStatuses.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
@@ -74,7 +74,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });
   }
 
-  // Chef can confirm/complete, client can cancel, admin can do anything
   const isChef = booking.chefProfile.userId === user.userId;
   const isClient = booking.clientId === user.userId;
   const isAdmin = user.role === "ADMIN";
@@ -83,12 +82,60 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (status === "CANCELLED" && !isClient && !isAdmin) {
-    return NextResponse.json({ error: "Only clients or admins can cancel" }, { status: 403 });
+  // ── Chef marks job complete → PENDING_COMPLETION (awaiting client confirmation)
+  if (status === "COMPLETED" || status === "PENDING_COMPLETION") {
+    if (!isChef && !isAdmin) {
+      return NextResponse.json({ error: "Only chefs or admins can mark complete" }, { status: 403 });
+    }
+
+    const autoConfirmAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const updated = await prisma.booking.update({
+      where: { id },
+      data: {
+        status: "PENDING_COMPLETION",
+        chefCompletedAt: new Date(),
+        autoConfirmAt,
+      },
+      include: {
+        client: { select: { name: true, email: true } },
+        chefProfile: { include: { user: { select: { name: true } } } },
+      },
+    });
+
+    // Notify client to confirm completion
+    await createNotification({
+      userId: updated.clientId,
+      type: "BOOKING_COMPLETED",
+      title: "Confirm Your Experience",
+      body: `${updated.chefProfile.user.name} has marked your booking as complete. Please confirm and leave a review!`,
+      data: { link: "/client/bookings" },
+    }).catch(console.error);
+
+    return NextResponse.json(updated);
   }
 
-  if ((status === "CONFIRMED" || status === "COMPLETED") && !isChef && !isAdmin) {
-    return NextResponse.json({ error: "Only chefs or admins can confirm/complete" }, { status: 403 });
+  // ── Client confirms completion → COMPLETED (triggers payment release)
+  if (status === "CONFIRM_COMPLETE") {
+    if (!isClient && !isAdmin) {
+      return NextResponse.json({ error: "Only the client or admin can confirm completion" }, { status: 403 });
+    }
+    if (booking.status !== "PENDING_COMPLETION") {
+      return NextResponse.json({ error: "Booking is not pending completion" }, { status: 400 });
+    }
+
+    return await finalizeCompletion(id, booking);
+  }
+
+  if (status === "CANCELLED") {
+    if (!isClient && !isAdmin) {
+      return NextResponse.json({ error: "Only clients or admins can cancel" }, { status: 403 });
+    }
+  }
+
+  if (status === "CONFIRMED") {
+    if (!isChef && !isAdmin) {
+      return NextResponse.json({ error: "Only chefs or admins can confirm" }, { status: 403 });
+    }
   }
 
   const updated = await prisma.booking.update({
@@ -132,54 +179,74 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  if (status === "COMPLETED") {
-    sendBookingCompletedToClient({
-      clientEmail: updated.client.email,
-      clientName: updated.client.name,
-      chefName: updated.chefProfile.user.name,
-    }).catch(console.error);
+  return NextResponse.json(updated);
+}
 
-    // ESCROW RELEASE: Capture the held payment now that job is complete
-    if (isStripeEnabled() && booking.stripePaymentIntentId && booking.paymentStatus === "CAPTURED") {
-      try {
-        await capturePayment(booking.stripePaymentIntentId);
-        await prisma.booking.update({
-          where: { id },
-          data: { paymentStatus: "RELEASED", payoutStatus: "RELEASED", payoutReleasedAt: new Date() },
-        });
-      } catch (err) {
-        console.error("Failed to capture escrow payment:", err);
-        // Payment capture failed — admin should investigate
-      }
-    }
+// ── Shared completion logic: payment release, email, tier promotion ──
+async function finalizeCompletion(bookingId: string, booking: { chefProfileId: string; clientId: string; stripePaymentIntentId: string | null; paymentStatus: string }) {
+  const updated = await prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: "COMPLETED", clientConfirmedAt: new Date() },
+    include: {
+      client: { select: { name: true, email: true } },
+      chefProfile: { include: { user: { select: { name: true } } } },
+    },
+  });
 
-    // Auto-promote tier based on completed jobs + rating
-    const chefProfile = await prisma.chefProfile.findUnique({
-      where: { id: booking.chefProfileId },
-      include: { reviews: { select: { rating: true } } },
-    });
-    if (chefProfile && !chefProfile.tierOverride) {
-      const newCompletedJobs = chefProfile.completedJobs + 1;
-      const ratings = chefProfile.reviews.map((r) => r.rating);
-      const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
-      const newTier = calculateTier(newCompletedJobs, avgRating);
-      const openIncidents = await prisma.incidentReport.count({
-        where: { reportedUserId: chefProfile.userId, status: { in: ["OPEN", "INVESTIGATING"] } },
+  sendBookingCompletedToClient({
+    clientEmail: updated.client.email,
+    clientName: updated.client.name,
+    chefName: updated.chefProfile.user.name,
+  }).catch(console.error);
+
+  // ESCROW RELEASE: Capture the held payment now that job is confirmed complete
+  if (isStripeEnabled() && booking.stripePaymentIntentId && booking.paymentStatus === "CAPTURED") {
+    try {
+      await capturePayment(booking.stripePaymentIntentId);
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { paymentStatus: "RELEASED", payoutStatus: "RELEASED", payoutReleasedAt: new Date() },
       });
-      const trustScore = calculateTrustScore({
-        avgRating,
-        completedJobs: newCompletedJobs,
-        bgCheckPassed: chefProfile.bgCheckStatus === "CLEAR",
-        insuranceVerified: chefProfile.insuranceVerified,
-        openIncidents,
-        tier: newTier,
-      });
-      await prisma.chefProfile.update({
-        where: { id: booking.chefProfileId },
-        data: { completedJobs: newCompletedJobs, tier: newTier, trustScore },
-      });
+    } catch (err) {
+      console.error("Failed to capture escrow payment:", err);
     }
   }
+
+  // Auto-promote tier based on completed jobs + rating
+  const chefProfile = await prisma.chefProfile.findUnique({
+    where: { id: booking.chefProfileId },
+    include: { reviews: { select: { rating: true } } },
+  });
+  if (chefProfile && !chefProfile.tierOverride) {
+    const newCompletedJobs = chefProfile.completedJobs + 1;
+    const ratings = chefProfile.reviews.map((r) => r.rating);
+    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+    const newTier = calculateTier(newCompletedJobs, avgRating);
+    const openIncidents = await prisma.incidentReport.count({
+      where: { reportedUserId: chefProfile.userId, status: { in: ["OPEN", "INVESTIGATING"] } },
+    });
+    const trustScore = calculateTrustScore({
+      avgRating,
+      completedJobs: newCompletedJobs,
+      bgCheckPassed: chefProfile.bgCheckStatus === "CLEAR",
+      insuranceVerified: chefProfile.insuranceVerified,
+      openIncidents,
+      tier: newTier,
+    });
+    await prisma.chefProfile.update({
+      where: { id: booking.chefProfileId },
+      data: { completedJobs: newCompletedJobs, tier: newTier, trustScore },
+    });
+  }
+
+  // Notify chef that client confirmed
+  await createNotification({
+    userId: updated.chefProfile.userId,
+    type: "BOOKING_COMPLETED",
+    title: "Booking Confirmed Complete",
+    body: `${updated.client.name} confirmed your booking is complete. Payment has been released.`,
+    data: { link: "/chef/dashboard" },
+  }).catch(console.error);
 
   return NextResponse.json(updated);
 }

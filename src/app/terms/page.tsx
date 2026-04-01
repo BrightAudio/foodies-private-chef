@@ -105,7 +105,59 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">8. Cancellations & Refunds</h2>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">8. Booking Completion & Payment Release</h2>
+            <p>
+              Upon completing a booking, the chef marks the job as complete. The client then has <strong>24 hours</strong> to
+              confirm completion and release payment. If the client does not confirm or dispute within 24 hours,
+              the booking is automatically confirmed and payment is released to the chef.
+            </p>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+              <li>Payment is held in escrow until the client confirms completion or the 24-hour window expires</li>
+              <li>Clients are encouraged to review the chef&apos;s work and leave a rating after confirmation</li>
+              <li>If a client believes the service was not rendered or was unsatisfactory, they must file a dispute within the 24-hour confirmation window</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">9. Disputes & Conflict Resolution</h2>
+            <div className="bg-dark-card border border-gold/20 p-5">
+              <p className="font-semibold text-cream mb-2">Dispute Process</p>
+              <p>
+                If either party is dissatisfied with the service, they may file an incident report through the platform.
+                Foodies will review all available evidence, including but not limited to:
+              </p>
+              <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+                <li>In-app messages between the client and chef</li>
+                <li>Booking details, timestamps, and confirmation records</li>
+                <li>Platform activity logs and service records</li>
+                <li>Photos, reviews, and any supporting documentation provided by either party</li>
+              </ul>
+              <p className="mt-4">
+                Foodies reserves the right to make final, binding decisions on all disputes. Outcomes may include
+                full or partial refunds, account warnings, suspensions, or permanent bans depending on the severity of the issue.
+              </p>
+              <p className="mt-3 text-cream-muted text-xs">
+                Disputes must be filed within 7 days of the booking date. Foodies aims to resolve all disputes within 5 business days.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">10. Client Obligations</h2>
+            <p>By using the Foodies platform, clients agree to:</p>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
+              <li>Provide accurate booking details including guest count, dietary restrictions, and event address</li>
+              <li>Ensure a clean, safe, and accessible kitchen for the chef to work in</li>
+              <li>Be present or have an authorized adult present during the entire booking</li>
+              <li>Provide reasonable notice (minimum 24 hours) for any changes to the booking</li>
+              <li>Confirm booking completion promptly after the chef finishes the service</li>
+              <li>Not attempt to hire, solicit, or contact chefs outside the Foodies platform</li>
+              <li>Treat chefs with respect and professionalism at all times</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">11. Cancellations & Refunds</h2>
             <ul className="list-disc list-inside space-y-1 text-cream-muted">
               <li>Clients may cancel pending bookings at no charge</li>
               <li>Confirmed bookings may be subject to a cancellation fee</li>
@@ -115,7 +167,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">9. Vehicle Verification</h2>
+            <h2 className="text-lg font-bold tracking-tight mb-3 text-gold">12. Vehicle Verification</h2>
             <p>
               For client safety, all chefs must register their vehicle information (license plate, make, and model)
               during onboarding. This allows clients to verify the identity of the chef arriving at their home.

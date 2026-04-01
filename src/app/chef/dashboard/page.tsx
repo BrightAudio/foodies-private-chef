@@ -485,8 +485,44 @@ export default function ChefDashboard() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ jobStatus }),
     });
+
+    // Send location check-in on job status changes
+    if (["EN_ROUTE", "ARRIVED", "IN_PROGRESS", "COMPLETED"].includes(jobStatus) && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const checkinType = jobStatus === "EN_ROUTE" ? "ARRIVAL" : jobStatus === "COMPLETED" ? "DEPARTURE" : "PERIODIC";
+        fetch(`/api/bookings/${bookingId}/location`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy, checkinType }),
+        }).catch(() => {});
+      }, () => {}, { enableHighAccuracy: true });
+    }
+
     fetchBookings();
   };
+
+  // Silent periodic location tracking for active jobs
+  useEffect(() => {
+    const activeBooking = bookings.find((b) =>
+      b.status === "CONFIRMED" && ["EN_ROUTE", "ARRIVED", "IN_PROGRESS"].includes(b.jobStatus)
+    );
+    if (!activeBooking || !navigator.geolocation) return;
+
+    const token = localStorage.getItem("token");
+    const sendLocation = () => {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        fetch(`/api/bookings/${activeBooking.id}/location`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy, checkinType: "PERIODIC" }),
+        }).catch(() => {});
+      }, () => {}, { enableHighAccuracy: true });
+    };
+
+    sendLocation(); // immediate
+    const interval = setInterval(sendLocation, 5 * 60 * 1000); // every 5 min
+    return () => clearInterval(interval);
+  }, [bookings]);
 
   const openInMaps = (address: string) => {
     const encoded = encodeURIComponent(address);
@@ -496,6 +532,7 @@ export default function ChefDashboard() {
   const statusColors: Record<string, string> = {
     PENDING: "bg-gold/10 text-gold",
     CONFIRMED: "bg-blue-500/10 text-blue-400",
+    PENDING_COMPLETION: "bg-amber-500/10 text-amber-400",
     COMPLETED: "bg-emerald-500/10 text-emerald-400",
     CANCELLED: "bg-red-500/10 text-red-400",
   };
@@ -517,7 +554,7 @@ export default function ChefDashboard() {
   };
 
   const earnings = bookings
-    .filter((b) => b.status === "COMPLETED")
+    .filter((b) => b.status === "COMPLETED" || b.status === "PENDING_COMPLETION")
     .reduce((sum, b) => sum + (b.subtotal - b.platformFee), 0);
 
   return (
@@ -989,7 +1026,7 @@ export default function ChefDashboard() {
           <>
         {/* Filter */}
         <div className="flex gap-2 mb-6">
-          {["", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].map((s) => (
+          {["", "PENDING", "CONFIRMED", "PENDING_COMPLETION", "COMPLETED", "CANCELLED"].map((s) => (
             <button
               key={s}
               onClick={() => setFilter(s)}
@@ -1115,14 +1152,18 @@ export default function ChefDashboard() {
 
                   {b.status === "CONFIRMED" && b.jobStatus === "IN_PROGRESS" && (
                     <button
-                      onClick={() => { updateJobStatus(b.id, "COMPLETED"); updateStatus(b.id, "COMPLETED"); }}
+                      onClick={() => { updateJobStatus(b.id, "COMPLETED"); updateStatus(b.id, "PENDING_COMPLETION"); }}
                       className="bg-emerald-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-emerald-500 transition-colors"
                     >
                       ✨ Complete Job
                     </button>
                   )}
 
-                  {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
+                  {b.status === "PENDING_COMPLETION" && (
+                    <span className="text-amber-400 text-sm font-medium">⏳ Awaiting client confirmation...</span>
+                  )}
+
+                  {b.status !== "CANCELLED" && b.status !== "COMPLETED" && b.status !== "PENDING_COMPLETION" && (
                     <a
                       href={`/messages/${b.id}`}
                       className="border border-dark-border px-4 py-2 text-sm font-medium text-cream-muted hover:border-gold/30 hover:text-cream transition-colors"

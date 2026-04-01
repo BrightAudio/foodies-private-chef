@@ -213,6 +213,8 @@ export default function AdminDashboard() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
   const [incidentNotes, setIncidentNotes] = useState("");
+  const [locationEvidence, setLocationEvidence] = useState<{ checkins: { latitude: number; longitude: number; accuracy: number | null; checkinType: string; createdAt: string }[]; summary: { totalCheckins: number; firstCheckin: string; lastCheckin: string; durationMinutes: number; arrivalRecorded: boolean; departureRecorded: boolean } | null } | null>(null);
+  const [locationBookingId, setLocationBookingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedChef, setExpandedChef] = useState<string | null>(null);
 
@@ -305,6 +307,19 @@ export default function AdminDashboard() {
     setExpandedIncident(null);
     setIncidentNotes("");
     fetchIncidents();
+  };
+
+  const fetchLocationEvidence = async (bookingId: string) => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/location`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setLocationEvidence(data);
+        setLocationBookingId(bookingId);
+      }
+    } catch { /* ignore */ }
   };
 
   const updateChef = async (id: string, data: { isApproved?: boolean; isActive?: boolean; bgCheckStatus?: string; tier?: string; verificationStatus?: string; idVerificationStatus?: string; insuranceVerified?: boolean; insuranceStatus?: string; activationStatus?: string }) => {
@@ -1119,6 +1134,12 @@ export default function AdminDashboard() {
                             <div>
                               <span className="text-cream-muted/60 text-xs">Booking:</span>
                               <p className="text-xs font-mono">{inc.bookingId.slice(0, 12)}...</p>
+                              <button
+                                onClick={() => fetchLocationEvidence(inc.bookingId!)}
+                                className="mt-1 text-xs text-blue-400 hover:text-blue-300 underline"
+                              >
+                                📍 View Location Evidence
+                              </button>
                             </div>
                           )}
                           {inc.resolvedAt && (
@@ -1132,6 +1153,38 @@ export default function AdminDashboard() {
                           <span className="text-cream-muted/60 text-xs">Full Description:</span>
                           <p className="text-sm mt-1">{inc.description}</p>
                         </div>
+                        {locationBookingId === inc.bookingId && locationEvidence && (
+                          <div className="bg-blue-500/5 border border-blue-500/20 p-4 space-y-3">
+                            <h4 className="text-sm font-semibold text-blue-400">📍 Location Evidence</h4>
+                            {locationEvidence.summary ? (
+                              <>
+                                <div className="grid grid-cols-3 gap-4 text-xs">
+                                  <div><span className="text-cream-muted/60">Check-ins:</span><p className="font-bold">{locationEvidence.summary.totalCheckins}</p></div>
+                                  <div><span className="text-cream-muted/60">Duration:</span><p className="font-bold">{locationEvidence.summary.durationMinutes} min</p></div>
+                                  <div><span className="text-cream-muted/60">Arrival:</span><p className="font-bold">{locationEvidence.summary.arrivalRecorded ? "✅ Yes" : "❌ No"}</p></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                  <div><span className="text-cream-muted/60">First:</span><p>{new Date(locationEvidence.summary.firstCheckin).toLocaleString()}</p></div>
+                                  <div><span className="text-cream-muted/60">Last:</span><p>{new Date(locationEvidence.summary.lastCheckin).toLocaleString()}</p></div>
+                                </div>
+                                <details className="text-xs">
+                                  <summary className="cursor-pointer text-cream-muted hover:text-cream transition-colors">View all check-ins ({locationEvidence.checkins.length})</summary>
+                                  <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                                    {locationEvidence.checkins.map((c, i) => (
+                                      <div key={i} className="flex justify-between text-cream-muted/80 border-b border-dark-border pb-1">
+                                        <span>{c.checkinType}</span>
+                                        <span>{c.latitude.toFixed(5)}, {c.longitude.toFixed(5)}</span>
+                                        <span>{new Date(c.createdAt).toLocaleTimeString()}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              </>
+                            ) : (
+                              <p className="text-sm text-cream-muted">No location data recorded for this booking.</p>
+                            )}
+                          </div>
+                        )}
                         {inc.adminNotes && (
                           <div className="bg-dark border border-dark-border p-3">
                             <span className="text-cream-muted/60 text-xs">Admin Notes:</span>
