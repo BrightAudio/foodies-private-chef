@@ -1,20 +1,22 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const [form, setForm] = useState({ email: "", password: "" });
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
     if (stored) {
       const u = JSON.parse(stored);
-      router.replace(u.role === "CHEF" ? "/chef/dashboard" : u.role === "ADMIN" ? "/admin" : "/browse");
+      router.replace(redirect || (u.role === "CHEF" ? "/chef/dashboard" : u.role === "ADMIN" ? "/admin" : "/browse"));
     }
-  }, [router]);
+  }, [router, redirect]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
@@ -47,7 +49,8 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      if (data.user.role === "ADMIN") window.location.href = "/admin";
+      if (redirect) window.location.href = redirect;
+      else if (data.user.role === "ADMIN") window.location.href = "/admin";
       else if (data.user.role === "CHEF") window.location.href = "/chef/dashboard";
       else window.location.href = "/browse";
     } catch (err: unknown) {
@@ -124,9 +127,17 @@ export default function LoginPage() {
 
         <p className="text-center mt-6 text-cream-muted">
           No account?{" "}
-          <Link href="/register" className="text-gold font-medium hover:text-gold-light transition-colors">Sign Up</Link>
+          <Link href={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"} className="text-gold font-medium hover:text-gold-light transition-colors">Sign Up</Link>
         </p>
       </div>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<><Navbar /><div className="text-center py-32 text-cream-muted pt-28">Loading...</div></>}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -8,6 +8,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const defaultRole = searchParams.get("role") === "CHEF" ? "CHEF" : "CLIENT";
+  const redirect = searchParams.get("redirect");
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -73,7 +74,7 @@ function RegisterForm() {
           </p>
           <div className="space-y-4">
             <Link
-              href="/login"
+              href={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
               className="inline-block bg-gold text-dark px-8 py-3 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors"
             >
               Go to Sign In
@@ -190,7 +191,7 @@ function RegisterForm() {
 
         <p className="text-center mt-6 text-cream-muted">
           Already have an account?{" "}
-          <Link href="/login" className="text-gold font-medium hover:text-gold-light transition-colors">Sign In</Link>
+          <Link href={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"} className="text-gold font-medium hover:text-gold-light transition-colors">Sign In</Link>
         </p>
       </div>
     </>

@@ -285,7 +285,13 @@ export default function ChefProfilePage() {
           </div>
         ) : (
           <button
-            onClick={() => setBookingOpen(!bookingOpen)}
+            onClick={() => {
+              if (!localStorage.getItem("token")) {
+                window.location.href = `/login?redirect=${encodeURIComponent(`/chef/${id}`)}`;
+                return;
+              }
+              setBookingOpen(!bookingOpen);
+            }}
             className="w-full bg-gold text-dark py-4 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors mb-8"
           >
             {bookingOpen ? "Close Booking Form" : `Book ${chef.user.name}`}
