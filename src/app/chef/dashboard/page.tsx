@@ -107,7 +107,14 @@ export default function ChefDashboard() {
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [dashTab, setDashTab] = useState<"bookings" | "specials" | "gallery" | "availability" | "payments" | "settings">("bookings");
+  const [dashTab, setDashTab] = useState<"bookings" | "specials" | "gallery" | "availability" | "payments" | "earnings" | "settings">("bookings");
+  const [earningsReport, setEarningsReport] = useState<{
+    yearlyReports: { year: number; totalJobs: number; grossRevenue: number; platformFees: number; chefEarnings: number; needs1099: boolean; quarters: { quarter: number; jobs: number; grossRevenue: number; platformFees: number; chefEarnings: number }[] }[];
+    currentYearTransactions: { id: string; date: string; clientName: string; grossAmount: number; platformFee: number; netEarnings: number; paymentStatus: string; payoutStatus: string; payoutReleasedAt: string | null }[];
+    currentYear: number;
+  } | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(false);
+  const [earningsYear, setEarningsYear] = useState<number>(new Date().getFullYear());
 
   // New feature state
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
@@ -138,6 +145,19 @@ export default function ChefDashboard() {
   const [signingTerms, setSigningTerms] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
   const [boostLoading, setBoostLoading] = useState(false);
+
+  // Fetch earnings report when tab opens
+  useEffect(() => {
+    if (dashTab !== "earnings" || earningsReport) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setEarningsLoading(true);
+    fetch("/api/chefs/earnings", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.yearlyReports) setEarningsReport(data); })
+      .catch(() => {})
+      .finally(() => setEarningsLoading(false));
+  }, [dashTab, earningsReport]);
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
@@ -708,6 +728,7 @@ export default function ChefDashboard() {
             { key: "gallery" as const, label: "📸 Gallery" },
             { key: "availability" as const, label: "📅 Availability" },
             { key: "payments" as const, label: "💳 Payments" },
+            { key: "earnings" as const, label: "📊 Earnings Report" },
             { key: "settings" as const, label: "⚙️ Settings" },
           ]).map((t) => (
             <button
@@ -1364,6 +1385,190 @@ export default function ChefDashboard() {
                 💡 Earnings are deposited directly to your bank account after job completion.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Earnings Report Tab */}
+        {dashTab === "earnings" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold tracking-tight">Earnings Report</h3>
+              {earningsReport && earningsReport.yearlyReports.length > 0 && (
+                <button
+                  onClick={() => {
+                    const report = earningsReport.yearlyReports.find(r => r.year === earningsYear);
+                    if (!report) return;
+                    const txns = earningsYear === earningsReport.currentYear ? earningsReport.currentYearTransactions : [];
+                    let csv = `Foodies Earnings Report - ${earningsYear}\n\n`;
+                    csv += `Year,${report.year}\n`;
+                    csv += `Total Jobs,${report.totalJobs}\n`;
+                    csv += `Gross Revenue,$${report.grossRevenue.toFixed(2)}\n`;
+                    csv += `Platform Fees,$${report.platformFees.toFixed(2)}\n`;
+                    csv += `Net Earnings,$${report.chefEarnings.toFixed(2)}\n`;
+                    csv += `1099 Required,${report.needs1099 ? "Yes" : "No"}\n\n`;
+                    csv += `Quarterly Breakdown\nQuarter,Jobs,Gross Revenue,Platform Fees,Net Earnings\n`;
+                    report.quarters.forEach(q => {
+                      csv += `Q${q.quarter},${q.jobs},$${q.grossRevenue.toFixed(2)},$${q.platformFees.toFixed(2)},$${q.chefEarnings.toFixed(2)}\n`;
+                    });
+                    if (txns.length > 0) {
+                      csv += `\nTransaction Detail\nDate,Client,Gross Amount,Platform Fee,Net Earnings,Payment Status,Payout Status\n`;
+                      txns.forEach(t => {
+                        csv += `${new Date(t.date).toLocaleDateString()},${t.clientName},$${t.grossAmount.toFixed(2)},$${t.platformFee.toFixed(2)},$${t.netEarnings.toFixed(2)},${t.paymentStatus},${t.payoutStatus}\n`;
+                      });
+                    }
+                    const blob = new Blob([csv], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url; a.download = `foodies-earnings-${earningsYear}.csv`; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="bg-gold text-dark px-4 py-2 text-xs font-bold tracking-wider uppercase hover:bg-gold-light transition-colors"
+                >
+                  ⬇ Download CSV
+                </button>
+              )}
+            </div>
+
+            {earningsLoading ? (
+              <div className="bg-dark-card border border-dark-border p-12 text-center">
+                <div className="animate-spin text-gold text-2xl mb-2">⟳</div>
+                <p className="text-cream-muted text-sm">Loading earnings data…</p>
+              </div>
+            ) : !earningsReport || earningsReport.yearlyReports.length === 0 ? (
+              <div className="bg-dark-card border border-dark-border p-12 text-center">
+                <p className="text-cream-muted">No completed bookings yet. Earnings will appear here after your first job.</p>
+              </div>
+            ) : (
+              <>
+                {/* Year selector */}
+                {earningsReport.yearlyReports.length > 1 && (
+                  <div className="flex gap-2">
+                    {earningsReport.yearlyReports.map(r => (
+                      <button
+                        key={r.year}
+                        onClick={() => setEarningsYear(r.year)}
+                        className={`px-4 py-2 text-sm font-bold tracking-wider ${earningsYear === r.year ? "bg-gold text-dark" : "bg-dark-card border border-dark-border text-cream-muted hover:border-gold/30"}`}
+                      >
+                        {r.year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {(() => {
+                  const report = earningsReport.yearlyReports.find(r => r.year === earningsYear);
+                  if (!report) return null;
+                  return (
+                    <>
+                      {/* Annual summary */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="bg-dark-card border border-dark-border p-5">
+                          <p className="text-[10px] text-cream-muted uppercase tracking-wider">Net Earnings</p>
+                          <p className="text-2xl font-bold text-emerald-400 mt-1">${report.chefEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="bg-dark-card border border-dark-border p-5">
+                          <p className="text-[10px] text-cream-muted uppercase tracking-wider">Gross Revenue</p>
+                          <p className="text-2xl font-bold mt-1">${report.grossRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="bg-dark-card border border-dark-border p-5">
+                          <p className="text-[10px] text-cream-muted uppercase tracking-wider">Platform Fees</p>
+                          <p className="text-2xl font-bold text-gold mt-1">${report.platformFees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="bg-dark-card border border-dark-border p-5">
+                          <p className="text-[10px] text-cream-muted uppercase tracking-wider">Jobs Completed</p>
+                          <p className="text-2xl font-bold mt-1">{report.totalJobs}</p>
+                        </div>
+                        <div className="bg-dark-card border border-dark-border p-5">
+                          <p className="text-[10px] text-cream-muted uppercase tracking-wider">1099 Status</p>
+                          <p className={`text-2xl font-bold mt-1 ${report.needs1099 ? "text-amber-400" : "text-cream-muted/50"}`}>
+                            {report.needs1099 ? "Required" : "Under $600"}
+                          </p>
+                          {report.needs1099 && <p className="text-[10px] text-amber-400/60 mt-1">You will receive a 1099 form</p>}
+                        </div>
+                      </div>
+
+                      {/* Quarterly breakdown */}
+                      <div className="bg-dark-card border border-dark-border">
+                        <div className="px-5 py-3 border-b border-dark-border">
+                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Quarterly Breakdown</h4>
+                        </div>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-dark-border text-cream-muted/60 text-xs">
+                              <th className="text-left px-5 py-2">Quarter</th>
+                              <th className="text-right px-5 py-2">Jobs</th>
+                              <th className="text-right px-5 py-2">Gross</th>
+                              <th className="text-right px-5 py-2">Fees</th>
+                              <th className="text-right px-5 py-2">Net Earnings</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {report.quarters.map(q => (
+                              <tr key={q.quarter} className="border-b border-dark-border/50">
+                                <td className="px-5 py-3 font-medium">Q{q.quarter} {report.year}</td>
+                                <td className="px-5 py-3 text-right">{q.jobs}</td>
+                                <td className="px-5 py-3 text-right">${q.grossRevenue.toFixed(2)}</td>
+                                <td className="px-5 py-3 text-right text-gold">${q.platformFees.toFixed(2)}</td>
+                                <td className="px-5 py-3 text-right text-emerald-400 font-bold">${q.chefEarnings.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Transaction detail — current year only */}
+                      {earningsYear === earningsReport.currentYear && earningsReport.currentYearTransactions.length > 0 && (
+                        <div className="bg-dark-card border border-dark-border">
+                          <div className="px-5 py-3 border-b border-dark-border">
+                            <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Transaction Detail — {earningsYear}</h4>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-dark-border text-cream-muted/60 text-xs">
+                                  <th className="text-left px-5 py-2">Date</th>
+                                  <th className="text-left px-5 py-2">Client</th>
+                                  <th className="text-right px-5 py-2">Gross</th>
+                                  <th className="text-right px-5 py-2">Fee</th>
+                                  <th className="text-right px-5 py-2">Net</th>
+                                  <th className="text-right px-5 py-2">Payout</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {earningsReport.currentYearTransactions.map(t => (
+                                  <tr key={t.id} className="border-b border-dark-border/50">
+                                    <td className="px-5 py-3">{new Date(t.date).toLocaleDateString()}</td>
+                                    <td className="px-5 py-3">{t.clientName}</td>
+                                    <td className="px-5 py-3 text-right">${t.grossAmount.toFixed(2)}</td>
+                                    <td className="px-5 py-3 text-right text-gold">${t.platformFee.toFixed(2)}</td>
+                                    <td className="px-5 py-3 text-right text-emerald-400 font-bold">${t.netEarnings.toFixed(2)}</td>
+                                    <td className="px-5 py-3 text-right">
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                                        t.payoutStatus === "PAID" ? "bg-emerald-500/10 text-emerald-400" :
+                                        t.payoutStatus === "RELEASED" ? "bg-blue-500/10 text-blue-400" :
+                                        t.payoutStatus === "FAILED" ? "bg-red-500/10 text-red-400" :
+                                        "bg-dark-border text-cream-muted/50"
+                                      }`}>{t.payoutStatus}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tax info */}
+                      <div className="bg-dark-card border border-dark-border p-5">
+                        <p className="text-xs text-cream-muted/60 leading-relaxed">
+                          💡 This report is provided for your records. If your net earnings for the tax year exceed $600, Foodies will issue a 1099-NEC form by January 31 of the following year. Consult a tax professional for advice on reporting self-employment income.
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
+            )}
           </div>
         )}
 

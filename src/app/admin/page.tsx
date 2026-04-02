@@ -530,6 +530,30 @@ export default function AdminDashboard() {
                             <div className="text-xs text-cream-muted/60 space-y-1">
                               <p>All-time: {chef.earnings.totalJobs} jobs · ${chef.earnings.grossRevenue.toLocaleString()} gross · ${chef.earnings.platformFees.toLocaleString()} platform fees · ${chef.earnings.chefEarnings.toLocaleString()} chef net</p>
                             </div>
+                            <button
+                              className="mt-3 bg-gold/10 text-gold px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase hover:bg-gold/20 transition-colors"
+                              onClick={() => {
+                                const e = chef.earnings;
+                                let csv = `Foodies Chef Earnings Report\n`;
+                                csv += `Chef,${chef.user?.name || "Unknown"}\n`;
+                                csv += `Email,${chef.user?.email || "N/A"}\n\n`;
+                                csv += `Total Jobs,${e.totalJobs}\n`;
+                                csv += `Gross Revenue,$${e.grossRevenue.toFixed(2)}\n`;
+                                csv += `Platform Fees,$${e.platformFees.toFixed(2)}\n`;
+                                csv += `Chef Earnings,$${e.chefEarnings.toFixed(2)}\n`;
+                                csv += `YTD Earnings,$${e.ytdEarnings.toFixed(2)}\n`;
+                                csv += `YTD Platform Fees,$${e.ytdPlatformFees.toFixed(2)}\n`;
+                                csv += `YTD Jobs,${e.ytdJobs}\n`;
+                                csv += `1099 Required,${e.needs1099 ? "Yes" : "No"}\n`;
+                                const blob = new Blob([csv], { type: "text/csv" });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a"); a.href = url;
+                                a.download = `earnings-${(chef.user?.name || "chef").replace(/\s+/g, "-").toLowerCase()}.csv`;
+                                a.click(); URL.revokeObjectURL(url);
+                              }}
+                            >
+                              ⬇ Download CSV
+                            </button>
                           </div>
                         )}
                       </div>
