@@ -100,7 +100,7 @@ export default function Home() {
               <p className="text-gold text-xs font-medium tracking-[0.25em] uppercase mb-4">
                 For Chefs
               </p>
-              <h2 className="text-4xl font-bold mb-6 tracking-tight">Join the Foodies Network</h2>
+              <h2 className="text-4xl font-bold mb-6 tracking-tight">Join Foodies Private Chef Services</h2>
               <p className="text-lg text-cream-muted mb-4 leading-relaxed">
                 Set your own rates, showcase your signature dishes, and connect with clients
                 seeking an elevated private dining experience.
@@ -149,7 +149,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="border-t border-dark-border py-12">
           <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-cream-muted">&copy; {new Date().getFullYear()} Foodies — Private Chef Experience</p>
+            <p className="text-sm text-cream-muted">&copy; {new Date().getFullYear()} Foodies Private Chef Services</p>
             <div className="flex gap-6">
               <Link href="/terms" className="text-sm text-cream-muted hover:text-gold transition-colors">
                 Terms of Service

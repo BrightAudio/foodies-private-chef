@@ -4,7 +4,7 @@ import ErrorBoundaryWrapper from "@/components/ErrorBoundaryWrapper";
 import AppTutorial from "@/components/AppTutorial";
 
 export const metadata: Metadata = {
-  title: "Foodies — Private Chef Marketplace",
+  title: "Foodies Private Chef Services",
   description: "Book vetted private chefs for an elevated in-home dining experience",
 };
 
