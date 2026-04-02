@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
     where: {
       isApproved: true,
       isActive: true,
-      ...(specialty ? { specialtyDish: { contains: specialty } } : {}),
-      ...(cuisineType ? { cuisineType: { contains: cuisineType } } : {}),
+      ...(specialty ? { specialtyDish: { contains: specialty, mode: "insensitive" as const } } : {}),
+      ...(cuisineType ? { cuisineType: { contains: cuisineType, mode: "insensitive" as const } } : {}),
       ...(tier ? { tier } : {}),
       ...(maxPrice < Infinity ? { hourlyRate: { lte: maxPrice } } : {}),
     },

@@ -254,7 +254,6 @@ export default function BrowseChefs() {
                   <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Event Date</label>
                   <input
                     type="date"
-                    required
                     value={eventDetails.date}
                     onChange={(e) => setEventDetails({ ...eventDetails, date: e.target.value })}
                     className="w-full border border-dark-border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold"
@@ -264,7 +263,6 @@ export default function BrowseChefs() {
                   <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Start Time</label>
                   <input
                     type="time"
-                    required
                     value={eventDetails.time}
                     onChange={(e) => setEventDetails({ ...eventDetails, time: e.target.value })}
                     className="w-full border border-dark-border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold"
@@ -276,7 +274,6 @@ export default function BrowseChefs() {
                 <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Number of Guests</label>
                 <input
                   type="number"
-                  required
                   min="1"
                   max="100"
                   placeholder="e.g. 8"
