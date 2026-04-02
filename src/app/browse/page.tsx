@@ -131,23 +131,25 @@ export default function BrowseChefs() {
     if (eventDetails.cuisine) {
       trackInterest({ signalType: "SEARCH", cuisineType: eventDetails.cuisine });
     }
-    const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
-    if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
-    const res = await fetch(`/api/chefs?${params}`);
-    const data = await res.json();
-    setChefs(data.chefs || data);
-    setLoading(false);
+    try {
+      const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
+      if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
+      const res = await fetch(`/api/chefs?${params}`);
+      const data = await res.json();
+      setChefs(data.chefs || data);
+    } catch { setChefs([]); } finally { setLoading(false); }
   };
 
   const refetchChefs = async () => {
     if (!selectedTier) return;
     setLoading(true);
-    const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
-    if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
-    const res = await fetch(`/api/chefs?${params}`);
-    const data = await res.json();
-    setChefs(data.chefs || data);
-    setLoading(false);
+    try {
+      const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
+      if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
+      const res = await fetch(`/api/chefs?${params}`);
+      const data = await res.json();
+      setChefs(data.chefs || data);
+    } catch { setChefs([]); } finally { setLoading(false); }
   };
 
   useEffect(() => {

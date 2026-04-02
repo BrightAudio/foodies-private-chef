@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
 
   // Try cache for default browse (no filters)
   const isDefaultBrowse = !specialty && !cuisineType && !tier && minRating === 0 && maxPrice === Infinity && sortBy === "rating" && page === 1;
+  const cacheKey = `chefs:browse:default:${limit}`;
   if (isDefaultBrowse) {
-    const cached = await cacheGet("chefs:browse:default");
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       return NextResponse.json(JSON.parse(cached));
     }
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
 
   // Cache default browse for 60 seconds
   if (isDefaultBrowse) {
-    cacheSet("chefs:browse:default", JSON.stringify(result), 60).catch(() => {});
+    cacheSet(cacheKey, JSON.stringify(result), 60).catch(() => {});
   }
 
   return NextResponse.json(result);
