@@ -391,7 +391,7 @@ export default function AdminDashboard() {
             <p className="text-2xl font-bold text-blue-400 mt-1">{activeBookings}</p>
           </div>
           <div className="bg-dark-card border border-dark-border p-5">
-            <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Revenue (30%)</p>
+            <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Platform Revenue</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">${Math.round(totalRevenue * 0.3)}</p>
           </div>
         </div>
@@ -975,7 +975,7 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-bold text-emerald-400 mt-1">${analytics.revenue.totalRevenue.toLocaleString()}</p>
                 </div>
                 <div className="bg-dark-card border border-dark-border p-5">
-                  <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Platform Revenue (30%)</p>
+                  <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Platform Revenue</p>
                   <p className="text-2xl font-bold text-gold mt-1">${analytics.revenue.platformRevenue.toLocaleString()}</p>
                 </div>
                 <div className="bg-dark-card border border-dark-border p-5">

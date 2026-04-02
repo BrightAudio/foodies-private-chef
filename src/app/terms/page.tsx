@@ -32,7 +32,7 @@ export default function TermsPage() {
               payment processing, customer support, background check administration, and insurance verification.
             </p>
             <ul className="list-disc list-inside mt-3 space-y-1 text-cream-muted">
-              <li>Platform fee: up to 30% of the booking total</li>
+              <li>A platform service fee applies to each booking</li>
               <li>Chefs receive their earnings after the platform fee is deducted</li>
               <li>All prices displayed to clients include the platform fee</li>
               <li>Fees are non-negotiable and subject to change with notice</li>

@@ -1356,7 +1356,7 @@ export default function ChefDashboard() {
 
             <div className="bg-blue-500/5 border border-blue-500/20 px-5 py-4">
               <p className="text-sm text-blue-300">
-                💡 Platform fee is 30% per booking. You receive 70% directly to your bank account after job completion.
+                💡 Earnings are deposited directly to your bank account after job completion.
               </p>
             </div>
           </div>

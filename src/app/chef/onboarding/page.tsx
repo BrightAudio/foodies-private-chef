@@ -645,7 +645,7 @@ export default function ChefOnboarding() {
                 🔪 New chefs start as <span className="text-blue-400">Sous Chef</span> (max $60/hr). Complete 15+ jobs with 4.0+ rating to unlock <span className="text-gold">Chef</span> ($125/hr), then 50+ jobs with 4.5+ for <span className="text-purple-400">Master Chef</span> (no cap).
               </p>
               <p className="text-xs text-cream-muted/50 mt-1">
-                Note: Foodies takes a 30% platform fee on each transaction.
+                Note: A platform service fee applies to each transaction.
               </p>
             </div>
 
@@ -836,7 +836,7 @@ export default function ChefOnboarding() {
                   <li>Comply with all local health codes and food safety regulations</li>
                   <li>Arrive on time for all confirmed bookings</li>
                   <li>Maintain professional conduct with all clients</li>
-                  <li>Accept a 30% platform fee on all bookings</li>
+                  <li>Accept the applicable platform service fee on all bookings</li>
                   <li>Use only the Foodies in-app messaging system for client communication</li>
                   <li>Submit to background checks and identity verification</li>
                   <li>Keep your vehicle information current and accurate</li>
