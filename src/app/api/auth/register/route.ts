@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const sanitized = sanitizeFields(body, ["name", "phone", "email"]);
-  const { email, password, name, phone, role } = sanitized;
+  const { password, name, phone, role } = sanitized;
+  const email = sanitized.email?.trim().toLowerCase();
 
   if (!email || !password || !name) {
     return NextResponse.json({ error: "Email, password, and name are required" }, { status: 400 });
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   const validRoles = ["CLIENT", "CHEF"];
   const userRole = validRoles.includes(role) ? role : "CLIENT";
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
   if (existing) {
     return NextResponse.json({ error: "Email already registered" }, { status: 409 });
   }
