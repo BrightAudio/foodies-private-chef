@@ -150,6 +150,7 @@ export default function ChefDashboard() {
   const [showSpecialForm, setShowSpecialForm] = useState(false);
 
   useEffect(() => {
+    if (!localStorage.getItem("token")) { window.location.href = "/login"; return; }
     fetchBookings();
     fetchTierData();
     fetchVerification();

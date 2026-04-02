@@ -61,6 +61,7 @@ export default function ClientBookings() {
   const [dishRequests, setDishRequests] = useState<DishReq[]>([]);
 
   useEffect(() => {
+    if (!localStorage.getItem("token")) { window.location.href = "/login"; return; }
     fetchBookings();
     fetchDishRequests();
   }, []);
