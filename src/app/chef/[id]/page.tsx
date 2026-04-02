@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
@@ -24,7 +24,8 @@ interface ChefDetail {
   tierEmoji: string;
   completedJobs: number;
   user: { name: string; email: string };
-  specials: { id: string; name: string; description: string; imageUrl: string | null; isWeeklySpecial?: boolean; price?: number; estimatedGroceryCost?: number | null }[];
+  specials: { id: string; name: string; description: string; imageUrl: string | null; isFeatured?: boolean; price?: number; estimatedGroceryCost?: number | null }[];
+  galleryImages: { id: string; imageUrl: string; caption: string | null; sortOrder: number }[];
   reviews: { id: string; rating: number; comment: string | null; createdAt: string; client: { name: string } }[];
   bgCheckPassed?: boolean;
   insuranceVerified?: boolean;
@@ -39,6 +40,7 @@ const tierBadgeColors: Record<string, string> = {
 
 export default function ChefProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [chef, setChef] = useState<ChefDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -185,6 +187,14 @@ export default function ChefProfilePage() {
     <>
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 pt-28 pb-16">
+        {/* Back Button */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-cream-muted hover:text-gold transition-colors mb-6 text-sm"
+        >
+          <span>←</span> Back
+        </button>
+
         {/* Chef Header */}
         <div className="bg-dark-card border border-dark-border p-8 mb-8">
           <div className="flex items-start gap-6">
@@ -219,7 +229,6 @@ export default function ChefProfilePage() {
                   <span className="text-gold text-xs font-medium tracking-wider uppercase">{chef.cuisineType}</span>
                 )}
                 {chef.cuisineType && <br />}
-                <span className="text-cream-muted/60 text-xs">Specialty:</span> {chef.specialtyDish}
               </p>
               {chef.bio && <p className="text-cream-muted/70 mt-3 leading-relaxed">{chef.bio}</p>}
 
@@ -239,32 +248,37 @@ export default function ChefProfilePage() {
           </div>
         </div>
 
-        {/* Specials */}
+        {/* Signature Dish */}
+        <div className="bg-gold/5 border border-gold/20 p-6 mb-8 flex items-center gap-4">
+          <span className="text-3xl">⭐</span>
+          <div>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-gold/60 mb-1">Signature Dish</p>
+            <p className="text-lg font-semibold text-gold">{chef.specialtyDish}</p>
+          </div>
+        </div>
+
+        {/* Menu */}
         {chef.specials.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 tracking-tight">Chef&apos;s Specials</h2>
+            <h2 className="text-2xl font-bold mb-4 tracking-tight">Menu</h2>
             <div className="grid md:grid-cols-3 gap-4">
-              {[...chef.specials].sort((a, b) => (b.isWeeklySpecial ? 1 : 0) - (a.isWeeklySpecial ? 1 : 0)).map((special) => (
-                <div key={special.id} className={`bg-dark-card border overflow-hidden transition-colors relative ${
-                  special.isWeeklySpecial ? "border-gold/60 ring-1 ring-gold/30 hover:border-gold" : "border-dark-border hover:border-gold/30"
+              {[...chef.specials].sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)).map((item) => (
+                <div key={item.id} className={`bg-dark-card border overflow-hidden transition-colors relative ${
+                  item.isFeatured ? "border-gold/60 ring-1 ring-gold/30 hover:border-gold" : "border-dark-border hover:border-gold/30"
                 }`}>
-                  {special.isWeeklySpecial && (
+                  {item.isFeatured && (
                     <div className="absolute top-2 left-2 bg-gold text-dark px-3 py-1 text-xs font-bold uppercase tracking-wider z-10">
-                      ⭐ Weekly Special
+                      🔥 Featured Dish
                     </div>
                   )}
-                  {special.imageUrl && (
+                  {item.imageUrl && (
                     <div className="h-36 relative">
-                      <Image src={special.imageUrl} alt={special.name} fill className="object-cover" sizes="300px" />
+                      <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="300px" />
                     </div>
                   )}
                   <div className="p-6">
-                    <h3 className="font-semibold text-lg mb-1">{special.name}</h3>
-                    <p className="text-cream-muted text-sm mb-3 leading-relaxed">{special.description}</p>
-                    {special.price != null && special.price > 0 && <p className="text-gold font-bold">${special.price.toFixed(2)}</p>}
-                    {special.estimatedGroceryCost != null && special.estimatedGroceryCost > 0 && (
-                      <p className="text-cream-muted text-xs mt-1">🛒 Groceries: ~${special.estimatedGroceryCost.toFixed(2)}</p>
-                    )}
+                    <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
+                    <p className="text-cream-muted text-sm leading-relaxed">{item.description}</p>
                   </div>
                 </div>
               ))}
@@ -272,9 +286,27 @@ export default function ChefProfilePage() {
           </div>
         )}
 
+        {/* Gallery */}
+        {chef.galleryImages && chef.galleryImages.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4 tracking-tight">Gallery</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {chef.galleryImages.map((img) => (
+                <div key={img.id} className="relative aspect-[4/3] overflow-hidden bg-dark-card border border-dark-border group">
+                  <Image src={img.imageUrl} alt={img.caption || "Gallery photo"} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 50vw, 33vw" />
+                  {img.caption && (
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-dark/80 to-transparent p-3">
+                      <p className="text-xs text-cream/80">{img.caption}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Trust Banner */}
-        <div className="bg-green-500/5 border border-green-500/15 px-6 py-3 mb-8 flex items-center gap-3">
-          <span className="text-green-400 text-lg">🔒</span>
+        <div className="bg-green-500/5 border border-green-500/15 px-6 py-3 mb-8 flex items-center gap-3">          <span className="text-green-400 text-lg">🔒</span>
           <p className="text-green-400/80 text-sm">All chefs are vetted and payments are held securely until your experience is complete.</p>
         </div>
 
@@ -327,7 +359,7 @@ export default function ChefProfilePage() {
 
             {chef.specials.length > 0 && (
               <div className="mb-6">
-                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-3">Which dishes interest you?</label>
+                <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-3">Which dishes from the menu interest you?</label>
                 <div className="flex flex-wrap gap-3">
                   {chef.specials.map((s) => {
                     const selected = selectedItems.includes(s.name);

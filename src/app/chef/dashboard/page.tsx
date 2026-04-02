@@ -141,10 +141,10 @@ export default function ChefDashboard() {
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
-  // Specials state
-  const [specials, setSpecials] = useState<{ id: string; name: string; description: string; price: number; imageUrl: string | null; isWeeklySpecial: boolean; weekStartDate: string | null; groceryItems: string | null; estimatedGroceryCost: number | null }[]>([]);
-  const [needsWeeklyRotation, setNeedsWeeklyRotation] = useState(false);
-  const [specialForm, setSpecialForm] = useState({ name: "", description: "", price: "", isWeeklySpecial: false });
+  // Menu items state
+  const [specials, setSpecials] = useState<{ id: string; name: string; description: string; price: number; imageUrl: string | null; isFeatured: boolean; featuredStartDate: string | null; groceryItems: string | null; estimatedGroceryCost: number | null }[]>([]);
+  const [needsRotation, setNeedsRotation] = useState(false);
+  const [specialForm, setSpecialForm] = useState({ name: "", description: "", price: "", isFeatured: false });
   const [groceryRows, setGroceryRows] = useState<{ item: string; qty: string; estCost: string }[]>([]);
   const [specialSaving, setSpecialSaving] = useState(false);
   const [showSpecialForm, setShowSpecialForm] = useState(false);
@@ -202,7 +202,7 @@ export default function ChefDashboard() {
       if (res.ok) {
         const data = await res.json();
         setSpecials(data.specials);
-        setNeedsWeeklyRotation(data.needsWeeklyRotation);
+        setNeedsRotation(data.needsRotation);
       }
     } catch { /* ignore */ }
   };
@@ -225,7 +225,7 @@ export default function ChefDashboard() {
         }),
       });
       if (res.ok) {
-        setSpecialForm({ name: "", description: "", price: "", isWeeklySpecial: false });
+        setSpecialForm({ name: "", description: "", price: "", isFeatured: false });
         setGroceryRows([]);
         setShowSpecialForm(false);
         fetchSpecials();
@@ -713,7 +713,7 @@ export default function ChefDashboard() {
               }`}
             >
               {t.label}
-              {t.key === "specials" && needsWeeklyRotation && (
+              {t.key === "specials" && needsRotation && (
                 <span className="ml-2 w-2 h-2 bg-amber-400 rounded-full inline-block animate-pulse" />
               )}
               {t.key === "payments" && stripeStatus && !stripeStatus.onboarded && (
@@ -726,19 +726,19 @@ export default function ChefDashboard() {
         {/* Specials Tab */}
         {dashTab === "specials" && (
           <div className="space-y-6">
-            {/* Weekly Rotation Prompt */}
-            {needsWeeklyRotation && specials.length > 0 && (
+            {/* Featured Dish Rotation Prompt */}
+            {needsRotation && specials.length > 0 && (
               <div className="bg-amber-500/10 border border-amber-500/30 p-5">
-                <h3 className="text-amber-400 font-bold text-lg mb-1">🔄 Time to Set This Week&apos;s Special!</h3>
-                <p className="text-cream-muted text-sm mb-3">Pick a dish from your menu to feature as this week&apos;s special. Clients love seeing what&apos;s fresh!</p>
+                <h3 className="text-amber-400 font-bold text-lg mb-1">🔄 Time to Set Your Featured Dish!</h3>
+                <p className="text-cream-muted text-sm mb-3">Pick a dish from your menu to feature for the next 2 weeks. Featured dishes get extra visibility in the For You feed!</p>
                 <div className="flex flex-wrap gap-2">
-                  {specials.filter(s => !s.isWeeklySpecial).map((s) => (
+                  {specials.filter(s => !s.isFeatured).map((s) => (
                     <button
                       key={s.id}
                       onClick={() => setWeeklySpecial(s.id)}
                       className="bg-gold/10 border border-gold/30 text-gold px-4 py-2 text-sm font-medium hover:bg-gold/20 transition-colors"
                     >
-                      Set &ldquo;{s.name}&rdquo; as Weekly Special
+                      Feature &ldquo;{s.name}&rdquo;
                     </button>
                   ))}
                 </div>
@@ -746,7 +746,7 @@ export default function ChefDashboard() {
             )}
 
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Your Specials</h2>
+              <h2 className="text-xl font-bold">Your Menu</h2>
               <button
                 onClick={() => setShowSpecialForm(!showSpecialForm)}
                 className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
@@ -794,11 +794,11 @@ export default function ChefDashboard() {
                     <label className="flex items-center gap-3 cursor-pointer pb-3">
                       <input
                         type="checkbox"
-                        checked={specialForm.isWeeklySpecial}
-                        onChange={(e) => setSpecialForm({ ...specialForm, isWeeklySpecial: e.target.checked })}
+                        checked={specialForm.isFeatured}
+                        onChange={(e) => setSpecialForm({ ...specialForm, isFeatured: e.target.checked })}
                         className="w-5 h-5 accent-gold"
                       />
-                      <span className="text-sm text-cream-muted">Set as this week&apos;s special</span>
+                      <span className="text-sm text-cream-muted">Set as featured dish (bi-weekly)</span>
                     </label>
                   </div>
                 </div>
@@ -873,7 +873,7 @@ export default function ChefDashboard() {
                   disabled={specialSaving || !specialForm.name.trim() || !specialForm.description.trim()}
                   className="bg-gold text-dark px-6 py-3 font-semibold text-sm tracking-[0.15em] uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
                 >
-                  {specialSaving ? "Saving..." : "Add Special"}
+                  {specialSaving ? "Saving..." : "Add to Menu"}
                 </button>
               </div>
             )}
@@ -882,18 +882,18 @@ export default function ChefDashboard() {
             {specials.length === 0 ? (
               <div className="text-center py-16 bg-dark-card border border-dark-border">
                 <p className="text-4xl mb-4">🍽️</p>
-                <p className="text-cream-muted mb-2">No specials yet</p>
+                <p className="text-cream-muted mb-2">No menu items yet</p>
                 <p className="text-cream-muted text-sm">Add your signature dishes so clients can see what you offer!</p>
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {specials.map((s) => (
                   <div key={s.id} className={`bg-dark-card border overflow-hidden relative ${
-                    s.isWeeklySpecial ? "border-gold/60 ring-1 ring-gold/30" : "border-dark-border"
+                    s.isFeatured ? "border-gold/60 ring-1 ring-gold/30" : "border-dark-border"
                   }`}>
-                    {s.isWeeklySpecial && (
+                    {s.isFeatured && (
                       <div className="absolute top-2 left-2 bg-gold text-dark px-3 py-1 text-xs font-bold uppercase tracking-wider z-10">
-                        ⭐ This Week&apos;s Special
+                        🔥 Featured Dish
                       </div>
                     )}
                     {s.imageUrl && (
@@ -909,12 +909,12 @@ export default function ChefDashboard() {
                         <p className="text-cream-muted text-xs mb-3">🛒 Groceries: ~${s.estimatedGroceryCost.toFixed(2)}</p>
                       )}
                       <div className="flex gap-2">
-                        {!s.isWeeklySpecial && (
+                        {!s.isFeatured && (
                           <button
                             onClick={() => setWeeklySpecial(s.id)}
                             className="text-xs bg-gold/10 border border-gold/30 text-gold px-3 py-1.5 hover:bg-gold/20 transition-colors"
                           >
-                            Set as Weekly Special
+                            Set as Featured
                           </button>
                         )}
                         <button

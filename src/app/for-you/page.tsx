@@ -10,8 +10,7 @@ interface FeedSpecial {
   name: string;
   description: string;
   imageUrl: string | null;
-  isWeeklySpecial: boolean;
-  estimatedGroceryCost: number | null;
+  isFeatured: boolean;
   chefId: string;
   chefName: string;
   chefTier: string;
@@ -181,9 +180,9 @@ export default function ForYouPage() {
                             🍽️
                           </div>
                         )}
-                        {special.isWeeklySpecial && (
+                        {special.isFeatured && (
                           <div className="absolute top-3 left-3 bg-gold text-dark text-[10px] font-bold tracking-widest uppercase px-2 py-1">
-                            Weekly Special
+                            🔥 Featured Dish
                           </div>
                         )}
                         {idx === 0 && personalized && (
@@ -259,12 +258,6 @@ export default function ForYouPage() {
                             )}
                           </div>
                         </div>
-
-                        {special.estimatedGroceryCost && (
-                          <p className="text-xs text-cream-muted mt-3">
-                            🛒 Estimated groceries: ~${special.estimatedGroceryCost.toFixed(2)}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>

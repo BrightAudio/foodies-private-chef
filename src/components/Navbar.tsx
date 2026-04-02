@@ -52,6 +52,9 @@ export default function Navbar() {
                 <Link href="/for-you" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
                   For You
                 </Link>
+                <Link href="/community" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
+                  Community
+                </Link>
                 <Link href="/food-trucks" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
                   Food Trucks
                 </Link>
@@ -65,9 +68,14 @@ export default function Navbar() {
                   </Link>
                 )}
                 {user.role === "CLIENT" && (
-                  <Link href="/client/bookings" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
-                    My Bookings
-                  </Link>
+                  <>
+                    <Link href="/client/bookings" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
+                      My Bookings
+                    </Link>
+                    <Link href="/client/profile" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
+                      My Profile
+                    </Link>
+                  </>
                 )}
                 {user.role === "ADMIN" && (
                   <Link href="/admin" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">

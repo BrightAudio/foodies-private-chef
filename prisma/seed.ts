@@ -8,6 +8,10 @@ async function main() {
   console.log("🌱 Seeding Foodies database...\n");
 
   // Clean non-upserted tables so re-seeds work idempotently
+  await prisma.postLike.deleteMany();
+  await prisma.postComment.deleteMany();
+  await prisma.socialPost.deleteMany();
+  await prisma.clientProfile.deleteMany();
   await prisma.foodTruckMenuItem.deleteMany();
   await prisma.foodTruck.deleteMany();
   await prisma.referral.deleteMany();
@@ -56,6 +60,28 @@ async function main() {
     console.log("✅ Client:", user.name);
   }
 
+  // ── Client Profiles (food preferences) ──
+  const clientProfiles = [
+    { userId: clients[0].id, bio: "Love exploring new cuisines! Always looking for authentic Italian and Japanese food.", favoriteCuisines: ["Italian", "Japanese", "Mediterranean"], dietaryRestrictions: [], allergies: [] },
+    { userId: clients[1].id, bio: "Passionate home cook who appreciates bold Asian flavors.", favoriteCuisines: ["Chinese", "Korean", "Thai", "Japanese"], dietaryRestrictions: ["Gluten-Free"], allergies: ["Peanuts"] },
+    { userId: clients[2].id, bio: "Health-conscious foodie who enjoys plant-based meals.", favoriteCuisines: ["Mediterranean", "Indian", "Middle Eastern"], dietaryRestrictions: ["Vegetarian"], allergies: [] },
+    { userId: clients[3].id, bio: "BBQ and comfort food enthusiast. Love a good steak dinner.", favoriteCuisines: ["Southern/BBQ", "Modern American", "Mexican"], dietaryRestrictions: [], allergies: ["Shellfish"] },
+  ];
+  for (const cp of clientProfiles) {
+    await prisma.clientProfile.upsert({
+      where: { userId: cp.userId },
+      update: {},
+      create: {
+        userId: cp.userId,
+        bio: cp.bio,
+        favoriteCuisines: JSON.stringify(cp.favoriteCuisines),
+        dietaryRestrictions: JSON.stringify(cp.dietaryRestrictions),
+        allergies: JSON.stringify(cp.allergies),
+      },
+    });
+  }
+  console.log("✅ Client profiles created");
+
   // ── Chefs ──
   const chefSeedData = [
     {
@@ -78,12 +104,13 @@ async function main() {
       trustScore: 92,
       boostActive: true,
       boostExpiresAt: new Date(Date.now() + 7 * 86400000),
+      profileImageUrl: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400",
       vehicle: { plate: "7ABC123", make: "Toyota", model: "Camry", color: "Silver" },
       specials: [
-        { name: "Truffle Ravioli", description: "Handmade ravioli with black truffle cream sauce and aged Parmigiano", price: 45 },
-        { name: "Osso Buco Milanese", description: "Braised veal shanks with saffron risotto and gremolata", price: 55 },
-        { name: "Tiramisu", description: "Classic espresso-soaked ladyfingers with mascarpone cream", price: 20 },
-        { name: "Burrata Caprese", description: "Fresh burrata with heirloom tomatoes and basil oil", price: 28 },
+        { name: "Truffle Ravioli", description: "Handmade ravioli with black truffle cream sauce and aged Parmigiano", price: 45, imageUrl: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600" },
+        { name: "Osso Buco Milanese", description: "Braised veal shanks with saffron risotto and gremolata", price: 55, imageUrl: "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=600" },
+        { name: "Tiramisu", description: "Classic espresso-soaked ladyfingers with mascarpone cream", price: 20, imageUrl: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600" },
+        { name: "Burrata Caprese", description: "Fresh burrata with heirloom tomatoes and basil oil", price: 28, imageUrl: "https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600", caption: "Fresh truffle ravioli" },
@@ -111,12 +138,13 @@ async function main() {
       trustScore: 97,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400",
       vehicle: { plate: "8XYZ789", make: "Lexus", model: "RX", color: "Pearl White" },
       specials: [
-        { name: "Omakase Sushi (12 pc)", description: "Chef's selection of premium nigiri with imported fish from Tsukiji", price: 120 },
-        { name: "Wagyu Tataki", description: "Seared A5 wagyu with ponzu, microgreens, and truffle salt", price: 85 },
-        { name: "Kaiseki Tasting (7 course)", description: "Traditional multi-course seasonal Japanese dinner", price: 200 },
-        { name: "Matcha Lava Cake", description: "Warm matcha cake with white chocolate center and yuzu cream", price: 25 },
+        { name: "Omakase Sushi (12 pc)", description: "Chef's selection of premium nigiri with imported fish from Tsukiji", price: 120, imageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600" },
+        { name: "Wagyu Tataki", description: "Seared A5 wagyu with ponzu, microgreens, and truffle salt", price: 85, imageUrl: "https://images.unsplash.com/photo-1553621042-f6e147245754?w=600" },
+        { name: "Kaiseki Tasting (7 course)", description: "Traditional multi-course seasonal Japanese dinner", price: 200, imageUrl: "https://images.unsplash.com/photo-1580822184713-fc5400e7fe10?w=600" },
+        { name: "Matcha Lava Cake", description: "Warm matcha cake with white chocolate center and yuzu cream", price: 25, imageUrl: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600", caption: "Omakase sushi selection" },
@@ -144,11 +172,12 @@ async function main() {
       trustScore: 78,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1583394293214-28ez090e0a71?w=400",
       vehicle: { plate: "4MEX567", make: "Ford", model: "F-150", color: "Red" },
       specials: [
-        { name: "Mole Negro", description: "28-ingredient traditional Oaxacan mole with free-range chicken", price: 40 },
-        { name: "Cochinita Pibil Tacos", description: "Slow-roasted pork with pickled red onions and habanero", price: 30 },
-        { name: "Elote Street Corn", description: "Grilled corn with cotija, lime crema, and chili powder", price: 12 },
+        { name: "Mole Negro", description: "28-ingredient traditional Oaxacan mole with free-range chicken", price: 40, imageUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600" },
+        { name: "Cochinita Pibil Tacos", description: "Slow-roasted pork with pickled red onions and habanero", price: 30, imageUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600" },
+        { name: "Elote Street Corn", description: "Grilled corn with cotija, lime crema, and chili powder", price: 12, imageUrl: "https://images.unsplash.com/photo-1470338745628-171cf53de3a8?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600", caption: "Mole negro plating" },
@@ -175,12 +204,13 @@ async function main() {
       trustScore: 65,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1607631568010-a87245c0daf8?w=400",
       vehicle: { plate: "3IND890", make: "Honda", model: "CR-V", color: "Blue" },
       specials: [
-        { name: "Hyderabadi Dum Biryani", description: "Slow-cooked basmati with saffron, tender lamb, and aromatic spices", price: 38 },
-        { name: "Butter Chicken", description: "Tandoori chicken in rich tomato-cream sauce with fresh naan", price: 32 },
-        { name: "Masala Dosa", description: "Crispy fermented crepe with spiced potato filling and chutneys", price: 18 },
-        { name: "Gulab Jamun", description: "Warm milk-solid dumplings in cardamom rose syrup", price: 14 },
+        { name: "Hyderabadi Dum Biryani", description: "Slow-cooked basmati with saffron, tender lamb, and aromatic spices", price: 38, imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600" },
+        { name: "Butter Chicken", description: "Tandoori chicken in rich tomato-cream sauce with fresh naan", price: 32, imageUrl: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600" },
+        { name: "Masala Dosa", description: "Crispy fermented crepe with spiced potato filling and chutneys", price: 18, imageUrl: "https://images.unsplash.com/photo-1630383249896-424e482df921?w=600" },
+        { name: "Gulab Jamun", description: "Warm milk-solid dumplings in cardamom rose syrup", price: 14, imageUrl: "https://images.unsplash.com/photo-1666190020955-f8246e5befe1?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600", caption: "Biryani presentation" },
@@ -207,13 +237,14 @@ async function main() {
       trustScore: 95,
       boostActive: true,
       boostExpiresAt: new Date(Date.now() + 3 * 86400000),
+      profileImageUrl: "https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=400",
       vehicle: { plate: "2FRN456", make: "BMW", model: "X3", color: "Midnight Blue" },
       specials: [
-        { name: "Beef Bourguignon", description: "Burgundy-braised beef with pearl onions, mushrooms, and lardons", price: 52 },
-        { name: "Duck Confit", description: "Slow-cooked duck leg with crispy skin, lentils du Puy, and jus", price: 48 },
-        { name: "Crème Brûlée Trio", description: "Vanilla, lavender, and passion fruit crème brûlées", price: 22 },
-        { name: "French Onion Soup", description: "Caramelized onion soup gratinéed with Gruyère", price: 18 },
-        { name: "Tarte Tatin", description: "Caramelized upside-down apple tart with crème fraîche", price: 20 },
+        { name: "Beef Bourguignon", description: "Burgundy-braised beef with pearl onions, mushrooms, and lardons", price: 52, imageUrl: "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=600" },
+        { name: "Duck Confit", description: "Slow-cooked duck leg with crispy skin, lentils du Puy, and jus", price: 48, imageUrl: "https://images.unsplash.com/photo-1432139509613-5c4255a78e02?w=600" },
+        { name: "Crème Brûlée Trio", description: "Vanilla, lavender, and passion fruit crème brûlées", price: 22, imageUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600" },
+        { name: "French Onion Soup", description: "Caramelized onion soup gratinéed with Gruyère", price: 18, imageUrl: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600" },
+        { name: "Tarte Tatin", description: "Caramelized upside-down apple tart with crème fraîche", price: 20, imageUrl: "https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600", caption: "Fine dining setup" },
@@ -241,11 +272,12 @@ async function main() {
       trustScore: 42,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1595257841889-eca2678454e2?w=400",
       vehicle: { plate: "6MED234", make: "Subaru", model: "Outback", color: "Green" },
       specials: [
-        { name: "Grilled Lamb Chops", description: "Herb-marinated lamb with house-made tzatziki and roasted vegetables", price: 44 },
-        { name: "Spanakopita", description: "Flaky phyllo filled with spinach, feta, and fresh herbs", price: 16 },
-        { name: "Baklava", description: "Layers of phyllo with walnuts, pistachios, and honey syrup", price: 14 },
+        { name: "Grilled Lamb Chops", description: "Herb-marinated lamb with house-made tzatziki and roasted vegetables", price: 44, imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600" },
+        { name: "Spanakopita", description: "Flaky phyllo filled with spinach, feta, and fresh herbs", price: 16, imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600" },
+        { name: "Baklava", description: "Layers of phyllo with walnuts, pistachios, and honey syrup", price: 14, imageUrl: "https://images.unsplash.com/photo-1519676867240-f03562e64b51?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600", caption: "Grilled lamb chops" },
@@ -271,10 +303,11 @@ async function main() {
       trustScore: 15,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=400",
       vehicle: null,
       specials: [
-        { name: "Tonkotsu Ramen", description: "18-hour pork bone broth with chashu, ajitama, and handmade noodles", price: 28 },
-        { name: "Karaage Plate", description: "Japanese fried chicken with kewpie mayo and shredded cabbage", price: 18 },
+        { name: "Tonkotsu Ramen", description: "18-hour pork bone broth with chashu, ajitama, and handmade noodles", price: 28, imageUrl: "https://images.unsplash.com/photo-1557872943-16a5ac26437e?w=600" },
+        { name: "Karaage Plate", description: "Japanese fried chicken with kewpie mayo and shredded cabbage", price: 18, imageUrl: "https://images.unsplash.com/photo-1562967914-608f82629710?w=600" },
       ],
       gallery: [],
     },
@@ -298,11 +331,12 @@ async function main() {
       trustScore: 35,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400",
       vehicle: { plate: "9PER012", make: "Toyota", model: "RAV4", color: "White" },
       specials: [
-        { name: "Classic Limeño Ceviche", description: "Fresh sea bass cured in tiger's milk with sweet potato and cancha", price: 34 },
-        { name: "Lomo Saltado", description: "Stir-fried beef tenderloin with tomatoes, onions over fries and rice", price: 38 },
-        { name: "Causa Limeña", description: "Layered potato terrine with avocado and shrimp", price: 22 },
+        { name: "Classic Limeño Ceviche", description: "Fresh sea bass cured in tiger's milk with sweet potato and cancha", price: 34, imageUrl: "https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?w=600" },
+        { name: "Lomo Saltado", description: "Stir-fried beef tenderloin with tomatoes, onions over fries and rice", price: 38, imageUrl: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600" },
+        { name: "Causa Limeña", description: "Layered potato terrine with avocado and shrimp", price: 22, imageUrl: "https://images.unsplash.com/photo-1535473895227-bdecb20fb157?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1535399831218-d5bd36d1a6b3?w=600", caption: "Ceviche" },
@@ -329,11 +363,12 @@ async function main() {
       trustScore: 84,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1560807707-8cc77767d783?w=400",
       vehicle: { plate: "BBQ4U01", make: "Chevy", model: "Silverado", color: "Black" },
       specials: [
-        { name: "Smoked Brisket Platter", description: "16-hour oak-smoked brisket with house BBQ sauce, coleslaw, and baked beans", price: 42 },
-        { name: "Shrimp & Grits", description: "Creamy stone-ground grits with sautéed Gulf shrimp and andouille sausage", price: 34 },
-        { name: "Peach Cobbler", description: "Warm peach cobbler with brown sugar crust and vanilla bean ice cream", price: 16 },
+        { name: "Smoked Brisket Platter", description: "16-hour oak-smoked brisket with house BBQ sauce, coleslaw, and baked beans", price: 42, imageUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600" },
+        { name: "Shrimp & Grits", description: "Creamy stone-ground grits with sautéed Gulf shrimp and andouille sausage", price: 34, imageUrl: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600" },
+        { name: "Peach Cobbler", description: "Warm peach cobbler with brown sugar crust and vanilla bean ice cream", price: 16, imageUrl: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600", caption: "Smoked brisket" },
@@ -360,12 +395,13 @@ async function main() {
       trustScore: 80,
       boostActive: true,
       boostExpiresAt: new Date(Date.now() + 5 * 86400000),
+      profileImageUrl: "https://images.unsplash.com/photo-1583394293214-28ded6d2bb79?w=400",
       vehicle: { plate: "WOK8888", make: "Honda", model: "Accord", color: "Red" },
       specials: [
-        { name: "Mapo Tofu", description: "Silky tofu in fiery Sichuan chili-bean paste with ground pork and Sichuan peppercorn", price: 24 },
-        { name: "Har Gow Dim Sum (12 pc)", description: "Crystal shrimp dumplings handmade with translucent wrappers", price: 30 },
-        { name: "Dan Dan Noodles", description: "Spicy Sichuan noodles with chili oil, minced pork, and crushed peanuts", price: 20 },
-        { name: "Peking Duck (whole)", description: "Crispy roasted duck with scallion pancakes, hoisin, and julienned cucumber", price: 85 },
+        { name: "Mapo Tofu", description: "Silky tofu in fiery Sichuan chili-bean paste with ground pork and Sichuan peppercorn", price: 24, imageUrl: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600" },
+        { name: "Har Gow Dim Sum (12 pc)", description: "Crystal shrimp dumplings handmade with translucent wrappers", price: 30, imageUrl: "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=600" },
+        { name: "Dan Dan Noodles", description: "Spicy Sichuan noodles with chili oil, minced pork, and crushed peanuts", price: 20, imageUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600" },
+        { name: "Peking Duck (whole)", description: "Crispy roasted duck with scallion pancakes, hoisin, and julienned cucumber", price: 85, imageUrl: "https://images.unsplash.com/photo-1518983546435-e7ef78a2365a?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600", caption: "Dim sum spread" },
@@ -392,11 +428,12 @@ async function main() {
       trustScore: 76,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1595257841889-eca2678454e2?w=400",
       vehicle: { plate: "MZE3210", make: "Toyota", model: "Highlander", color: "Silver" },
       specials: [
-        { name: "Mixed Grill Mezze Feast", description: "Lamb kofta, chicken shawarma, and beef kebab with hummus, baba ganoush, and fresh pita", price: 52 },
-        { name: "Lamb Mansaf", description: "Jordanian national dish — lamb in fermented yogurt sauce over aromatic rice", price: 46 },
-        { name: "Kunafa", description: "Warm cheese pastry with shredded phyllo and orange blossom syrup", price: 18 },
+        { name: "Mixed Grill Mezze Feast", description: "Lamb kofta, chicken shawarma, and beef kebab with hummus, baba ganoush, and fresh pita", price: 52, imageUrl: "https://images.unsplash.com/photo-1540914124281-342587941389?w=600" },
+        { name: "Lamb Mansaf", description: "Jordanian national dish — lamb in fermented yogurt sauce over aromatic rice", price: 46, imageUrl: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=600" },
+        { name: "Kunafa", description: "Warm cheese pastry with shredded phyllo and orange blossom syrup", price: 18, imageUrl: "https://images.unsplash.com/photo-1579888944880-d98341245702?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1540914124281-342587941389?w=600", caption: "Mezze spread" },
@@ -423,11 +460,12 @@ async function main() {
       trustScore: 60,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=400",
       vehicle: { plate: "JOL2025", make: "Nissan", model: "Rogue", color: "Blue" },
       specials: [
-        { name: "Party Jollof Rice", description: "Smoky, tomato-based rice cooked low and slow with the perfect bottom crust", price: 28 },
-        { name: "Suya Platter", description: "Spicy grilled beef skewers with yaji seasoning, sliced onions, and tomatoes", price: 32 },
-        { name: "Egusi Soup with Pounded Yam", description: "Rich melon seed soup with assorted meats and fresh spinach", price: 36 },
+        { name: "Party Jollof Rice", description: "Smoky, tomato-based rice cooked low and slow with the perfect bottom crust", price: 28, imageUrl: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=600" },
+        { name: "Suya Platter", description: "Spicy grilled beef skewers with yaji seasoning, sliced onions, and tomatoes", price: 32, imageUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600" },
+        { name: "Egusi Soup with Pounded Yam", description: "Rich melon seed soup with assorted meats and fresh spinach", price: 36, imageUrl: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=600", caption: "Jollof rice" },
@@ -453,12 +491,13 @@ async function main() {
       trustScore: 90,
       boostActive: true,
       boostExpiresAt: new Date(Date.now() + 4 * 86400000),
+      profileImageUrl: "https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=400",
       vehicle: { plate: "NRD7777", make: "Volvo", model: "XC60", color: "Forest Green" },
       specials: [
-        { name: "Gravlax Tasting Board", description: "House-cured salmon three ways with dill, beetroot, and aquavit", price: 48 },
-        { name: "Swedish Meatballs", description: "Classic köttbullar with lingonberry, cream sauce, and pickled cucumber", price: 32 },
-        { name: "Smoked Arctic Char", description: "Alder-smoked char with horseradish cream and rye croutons", price: 44 },
-        { name: "Cardamom Buns", description: "Warm kardemummabullar with pearl sugar glaze", price: 14 },
+        { name: "Gravlax Tasting Board", description: "House-cured salmon three ways with dill, beetroot, and aquavit", price: 48, imageUrl: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600" },
+        { name: "Swedish Meatballs", description: "Classic köttbullar with lingonberry, cream sauce, and pickled cucumber", price: 32, imageUrl: "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=600" },
+        { name: "Smoked Arctic Char", description: "Alder-smoked char with horseradish cream and rye croutons", price: 44, imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600" },
+        { name: "Cardamom Buns", description: "Warm kardemummabullar with pearl sugar glaze", price: 14, imageUrl: "https://images.unsplash.com/photo-1509365390695-33aee754301f?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600", caption: "Nordic plating" },
@@ -485,11 +524,12 @@ async function main() {
       trustScore: 72,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400",
       vehicle: { plate: "JRK4200", make: "Jeep", model: "Wrangler", color: "Yellow" },
       specials: [
-        { name: "Jerk Chicken", description: "Scotch bonnet and allspice marinated chicken with fried plantain and rice & peas", price: 36 },
-        { name: "Waakye Platter", description: "Ghanaian rice and beans with shito pepper sauce, spaghetti, and kelewele", price: 28 },
-        { name: "Rum Cake", description: "Dense Caribbean rum cake soaked in dark rum and topped with caramel glaze", price: 18 },
+        { name: "Jerk Chicken", description: "Scotch bonnet and allspice marinated chicken with fried plantain and rice & peas", price: 36, imageUrl: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=600" },
+        { name: "Waakye Platter", description: "Ghanaian rice and beans with shito pepper sauce, spaghetti, and kelewele", price: 28, imageUrl: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=600" },
+        { name: "Rum Cake", description: "Dense Caribbean rum cake soaked in dark rum and topped with caramel glaze", price: 18, imageUrl: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=600", caption: "Jerk chicken platter" },
@@ -515,12 +555,13 @@ async function main() {
       trustScore: 82,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1583394293214-28ded6d2bb79?w=400",
       vehicle: { plate: "BBQ9090", make: "Hyundai", model: "Tucson", color: "White" },
       specials: [
-        { name: "Korean BBQ Experience", description: "Tableside grilled galbi, bulgogi, and samgyeopsal with all the banchan", price: 65 },
-        { name: "Kimchi Jjigae", description: "Deeply fermented kimchi stew with pork belly and silken tofu", price: 26 },
-        { name: "Japchae", description: "Glass noodles stir-fried with vegetables, beef, and sesame oil", price: 22 },
-        { name: "Hotteok", description: "Sweet Korean pancakes filled with brown sugar, cinnamon, and crushed peanuts", price: 14 },
+        { name: "Korean BBQ Experience", description: "Tableside grilled galbi, bulgogi, and samgyeopsal with all the banchan", price: 65, imageUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600" },
+        { name: "Kimchi Jjigae", description: "Deeply fermented kimchi stew with pork belly and silken tofu", price: 26, imageUrl: "https://images.unsplash.com/photo-1583224994076-0a3cbb62aa38?w=600" },
+        { name: "Japchae", description: "Glass noodles stir-fried with vegetables, beef, and sesame oil", price: 22, imageUrl: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=600" },
+        { name: "Hotteok", description: "Sweet Korean pancakes filled with brown sugar, cinnamon, and crushed peanuts", price: 14, imageUrl: "https://images.unsplash.com/photo-1584278860047-22db9ff82bed?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600", caption: "Korean BBQ spread" },
@@ -547,11 +588,12 @@ async function main() {
       trustScore: 55,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400",
       vehicle: { plate: "PIZ2025", make: "Fiat", model: "500X", color: "Red" },
       specials: [
-        { name: "Neapolitan Pizza Party (10 pies)", description: "Authentic 90-second fired pizzas — Margherita, Diavola, Quattro Formaggi, and more", price: 120 },
-        { name: "Arancini", description: "Crispy saffron risotto balls stuffed with mozzarella and ragù", price: 18 },
-        { name: "Limoncello Panna Cotta", description: "Silky lemon custard with Amalfi coast limoncello", price: 14 },
+        { name: "Neapolitan Pizza Party (10 pies)", description: "Authentic 90-second fired pizzas — Margherita, Diavola, Quattro Formaggi, and more", price: 120, imageUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600" },
+        { name: "Arancini", description: "Crispy saffron risotto balls stuffed with mozzarella and ragù", price: 18, imageUrl: "https://images.unsplash.com/photo-1595295333158-4742f28fbd85?w=600" },
+        { name: "Limoncello Panna Cotta", description: "Silky lemon custard with Amalfi coast limoncello", price: 14, imageUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600", caption: "Neapolitan pizza" },
@@ -577,11 +619,12 @@ async function main() {
       trustScore: 77,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1607631568010-a87245c0daf8?w=400",
       vehicle: { plate: "TAG5050", make: "Mercedes", model: "GLA", color: "Sand" },
       specials: [
-        { name: "Lamb Tagine", description: "Slow-braised lamb with preserved lemons, olives, and saffron over fluffy couscous", price: 46 },
-        { name: "Chicken Pastilla", description: "Flaky phyllo pie with spiced chicken, almonds, and cinnamon sugar", price: 38 },
-        { name: "Moroccan Mint Tea & Pastries", description: "Traditional gunpowder tea service with honey-soaked chebakia and gazelle horns", price: 20 },
+        { name: "Lamb Tagine", description: "Slow-braised lamb with preserved lemons, olives, and saffron over fluffy couscous", price: 46, imageUrl: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600" },
+        { name: "Chicken Pastilla", description: "Flaky phyllo pie with spiced chicken, almonds, and cinnamon sugar", price: 38, imageUrl: "https://images.unsplash.com/photo-1511690743698-d9d18f7e20f1?w=600" },
+        { name: "Moroccan Mint Tea & Pastries", description: "Traditional gunpowder tea service with honey-soaked chebakia and gazelle horns", price: 20, imageUrl: "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600", caption: "Lamb tagine" },
@@ -608,12 +651,13 @@ async function main() {
       trustScore: 85,
       boostActive: false,
       boostExpiresAt: null,
+      profileImageUrl: "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=400",
       vehicle: { plate: "FRM2025", make: "Ford", model: "Bronco", color: "Army Green" },
       specials: [
-        { name: "Pan-Seared Duck Breast", description: "Crispy skin duck with cherry gastrique, roasted root vegetables, and herb jus", price: 54 },
-        { name: "Heirloom Tomato Burrata Salad", description: "Local heirloom tomatoes with burrata, aged balsamic, and microgreens", price: 24 },
-        { name: "Braised Short Ribs", description: "48-hour braised short ribs with truffle polenta and red wine reduction", price: 48 },
-        { name: "Seasonal Fruit Galette", description: "Rustic open-faced tart with whatever is fresh from the farm", price: 18 },
+        { name: "Pan-Seared Duck Breast", description: "Crispy skin duck with cherry gastrique, roasted root vegetables, and herb jus", price: 54, imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600" },
+        { name: "Heirloom Tomato Burrata Salad", description: "Local heirloom tomatoes with burrata, aged balsamic, and microgreens", price: 24, imageUrl: "https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=600" },
+        { name: "Braised Short Ribs", description: "48-hour braised short ribs with truffle polenta and red wine reduction", price: 48, imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600" },
+        { name: "Seasonal Fruit Galette", description: "Rustic open-faced tart with whatever is fresh from the farm", price: 18, imageUrl: "https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=600" },
       ],
       gallery: [
         { url: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600", caption: "Duck breast plating" },
@@ -708,11 +752,11 @@ async function main() {
         boostExpiresAt: chef.boostExpiresAt,
         activationStatus: chef.activationStatus,
 
-        // Specials — mark first one as this week's special
+        // Menu items — mark first one as the bi-weekly featured dish
         specials: { create: chef.specials.map((s, i) => ({
           ...s,
-          isWeeklySpecial: i === 0,
-          weekStartDate: i === 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); d.setHours(0,0,0,0); return d; })() : null,
+          isFeatured: i === 0,
+          featuredStartDate: i === 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); d.setHours(0,0,0,0); return d; })() : null,
         })) },
 
         // Gallery

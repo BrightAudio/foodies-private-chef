@@ -19,23 +19,26 @@ export async function GET(req: NextRequest) {
 
   const specials = await prisma.chefSpecial.findMany({
     where: { chefProfileId: profile.id },
-    orderBy: [{ isWeeklySpecial: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
   });
 
-  // Check if weekly special needs rotation (current week's Monday)
+  // Check if featured dish needs rotation (bi-weekly, starting from Monday)
   const now = new Date();
   const monday = new Date(now);
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  // Align to bi-weekly cycle (even weeks)
+  const weekNum = Math.floor(monday.getTime() / (7 * 86400000));
+  if (weekNum % 2 !== 0) monday.setDate(monday.getDate() - 7);
   monday.setHours(0, 0, 0, 0);
 
-  const currentWeeklySpecial = specials.find(
-    (s) => s.isWeeklySpecial && s.weekStartDate && new Date(s.weekStartDate).getTime() >= monday.getTime()
+  const currentFeatured = specials.find(
+    (s) => s.isFeatured && s.featuredStartDate && new Date(s.featuredStartDate).getTime() >= monday.getTime()
   );
 
   return NextResponse.json({
     specials,
-    needsWeeklyRotation: !currentWeeklySpecial,
-    currentWeekStart: monday.toISOString(),
+    needsRotation: !currentFeatured,
+    currentPeriodStart: monday.toISOString(),
   });
 }
 
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, price, imageUrl, isWeeklySpecial, groceryItems, estimatedGroceryCost } = body;
+  const { name, description, price, imageUrl, isFeatured, groceryItems, estimatedGroceryCost } = body;
 
   if (!name?.trim() || !description?.trim()) {
     return NextResponse.json({ error: "Name and description are required" }, { status: 400 });
@@ -75,19 +78,19 @@ export async function POST(req: NextRequest) {
     })).filter((g: { item: string }) => g.item));
   }
 
-  // If setting as weekly special, clear any existing weekly special for this week
-  let weekStartDate: Date | null = null;
-  if (isWeeklySpecial) {
+  // If setting as featured dish, clear any existing featured for this period
+  let featuredStartDate: Date | null = null;
+  if (isFeatured) {
     const now = new Date();
     const monday = new Date(now);
     monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     monday.setHours(0, 0, 0, 0);
-    weekStartDate = monday;
+    featuredStartDate = monday;
 
-    // Unset previous weekly specials
+    // Unset previous featured dishes
     await prisma.chefSpecial.updateMany({
-      where: { chefProfileId: profile.id, isWeeklySpecial: true },
-      data: { isWeeklySpecial: false, weekStartDate: null },
+      where: { chefProfileId: profile.id, isFeatured: true },
+      data: { isFeatured: false, featuredStartDate: null },
     });
   }
 
@@ -98,8 +101,8 @@ export async function POST(req: NextRequest) {
       description: description.trim(),
       price: price ? Number(price) : 0,
       imageUrl: imageUrl || null,
-      isWeeklySpecial: !!isWeeklySpecial,
-      weekStartDate,
+      isFeatured: !!isFeatured,
+      featuredStartDate,
       groceryItems: groceryJson,
       estimatedGroceryCost: estimatedGroceryCost ? Number(estimatedGroceryCost) : null,
     },
@@ -143,15 +146,15 @@ export async function PATCH(req: NextRequest) {
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   monday.setHours(0, 0, 0, 0);
 
-  // Unset all weekly specials, then set the chosen one
+  // Unset all featured dishes, then set the chosen one
   await prisma.chefSpecial.updateMany({
-    where: { chefProfileId: profile.id, isWeeklySpecial: true },
-    data: { isWeeklySpecial: false, weekStartDate: null },
+    where: { chefProfileId: profile.id, isFeatured: true },
+    data: { isFeatured: false, featuredStartDate: null },
   });
 
   const updated = await prisma.chefSpecial.update({
     where: { id: specialId },
-    data: { isWeeklySpecial: true, weekStartDate: monday },
+    data: { isFeatured: true, featuredStartDate: monday },
   });
 
   return NextResponse.json(updated);

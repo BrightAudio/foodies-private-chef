@@ -432,16 +432,22 @@ export default function BrowseChefs() {
                         )}
                       </div>
 
-                      <p className="text-sm text-cream-muted mb-4">
+                      <p className="text-sm text-cream-muted mb-2">
                         {chef.cuisineType && (
                           <span className="text-gold text-xs font-medium tracking-wider uppercase">{chef.cuisineType}</span>
                         )}
-                        {chef.cuisineType && <br />}
-                        <span className="text-cream-muted/60 text-xs">Specialty:</span> {chef.specialtyDish}
                       </p>
 
+                      {/* Signature Dish */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-xs">⭐</span>
+                        <span className="text-sm font-medium text-cream">{chef.specialtyDish}</span>
+                      </div>
+
                       {chef.specials.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-4 border-t border-dark-border">
+                        <div className="pt-4 border-t border-dark-border">
+                          <p className="text-[10px] text-cream-muted/50 tracking-wider uppercase mb-2">Menu</p>
+                          <div className="flex flex-wrap gap-2">
                           {chef.specials.map((s) => (
                             <span
                               key={s.id}
@@ -450,6 +456,7 @@ export default function BrowseChefs() {
                               {s.name}
                             </span>
                           ))}
+                          </div>
                         </div>
                       )}
                     </div>

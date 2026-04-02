@@ -224,7 +224,7 @@ export async function GET(req: NextRequest) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function baseScore(s: any): number {
   let score = 10;
-  if (s.isWeeklySpecial) score += 20;
+  if (s.isFeatured) score += 25; // bi-weekly featured dish gets strong boost
   if (s.chefProfile.tier === "MASTER_CHEF") score += 15;
   else if (s.chefProfile.tier === "CHEF") score += 8;
   if (s.chefProfile.avgRating) score += s.chefProfile.avgRating * 3;
@@ -239,7 +239,7 @@ function serializeSpecial(s: any) {
     name: s.name,
     description: s.description,
     imageUrl: s.imageUrl,
-    isWeeklySpecial: s.isWeeklySpecial,
+    isWeeklySpecial: s.isFeatured,
     estimatedGroceryCost: s.estimatedGroceryCost,
     chefId: s.chefProfileId,
     chefName: s.chefProfile.user.name,

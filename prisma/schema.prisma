@@ -36,6 +36,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   chefProfile   ChefProfile?
+  clientProfile ClientProfile?
   bookingsAsClient Booking[] @relation("ClientBookings")
   reviews       Review[]
   foodTrucks    FoodTruck[]
@@ -50,6 +51,9 @@ model User {
   insuranceReferrals InsuranceReferral[]
   dishRequests      DishRequest[] @relation("ClientDishRequests")
   interests         UserInterest[]
+  socialPosts       SocialPost[]
+  postComments      PostComment[]
+  postLikes         PostLike[]
 
   @@index([email])
   @@index([role])
@@ -167,6 +171,7 @@ model ChefProfile {
   galleryImages         ChefGalleryImage[]
   availability          ChefAvailability[]
   favoritedBy           FavoriteChef[]
+  taggedInPosts         SocialPost[] @relation("TaggedChefPosts")
 
   @@index([userId])
   @@index([isApproved, isActive])
@@ -194,13 +199,13 @@ model ChefSpecial {
   description     String
   price           Float    @default(0)
   imageUrl        String?
-  isWeeklySpecial Boolean  @default(false)
-  weekStartDate   DateTime?  // Monday of the week this special is active
+  isFeatured      Boolean  @default(false) @map("isWeeklySpecial")
+  featuredStartDate DateTime? @map("weekStartDate") // Start of 2-week featured rotation
   groceryItems    String?    // JSON array of {item, qty, estCost}
   estimatedGroceryCost Float? // Total estimated grocery cost
   createdAt       DateTime    @default(now())
 
-  @@index([chefProfileId, isWeeklySpecial])
+  @@index([chefProfileId, isFeatured])
 }
 
 // Custom dish request — client asks Chef/Master Chef for a custom dish
@@ -494,6 +499,62 @@ model Referral {
 
   @@index([referrerId])
   @@index([referredUserId])
+}
+
+// Client profile — food preferences, dietary info
+model ClientProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id])
+  bio                 String?
+  profileImageUrl     String?
+  favoriteCuisines    String?  // JSON array: ["Italian", "Japanese", ...]
+  dietaryRestrictions String?  // JSON array: ["Vegetarian", "Gluten-Free", ...]
+  allergies           String?  // JSON array: ["Peanuts", "Shellfish", ...]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// Social feed — clients share experiences and tag chefs
+model SocialPost {
+  id              String       @id @default(uuid())
+  authorId        String
+  author          User         @relation(fields: [authorId], references: [id])
+  content         String
+  imageUrl        String?
+  taggedChefId    String?
+  taggedChef      ChefProfile? @relation("TaggedChefPosts", fields: [taggedChefId], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  comments        PostComment[]
+  likes           PostLike[]
+
+  @@index([authorId])
+  @@index([taggedChefId])
+  @@index([createdAt])
+}
+
+model PostComment {
+  id        String     @id @default(uuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime   @default(now())
+
+  @@index([postId])
+}
+
+model PostLike {
+  id        String     @id @default(uuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
 }
 
 // Interest tracking — powers the "For You" ad-style specials feed
