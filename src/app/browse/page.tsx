@@ -229,7 +229,7 @@ export default function BrowseChefs() {
                     <span>·</span>
                     <span>✓ Insured</span>
                     <span>·</span>
-                    <span>✓ Escrow protected</span>
+                    <span>✓ Secure payment</span>
                   </div>
                 </button>
               ))}

@@ -275,7 +275,7 @@ export default function ChefProfilePage() {
         {/* Trust Banner */}
         <div className="bg-green-500/5 border border-green-500/15 px-6 py-3 mb-8 flex items-center gap-3">
           <span className="text-green-400 text-lg">🔒</span>
-          <p className="text-green-400/80 text-sm">All chefs are vetted and payments are securely held in escrow until your experience is complete.</p>
+          <p className="text-green-400/80 text-sm">All chefs are vetted and payments are held securely until your experience is complete.</p>
         </div>
 
         {/* Book button */}
@@ -406,7 +406,7 @@ export default function ChefProfilePage() {
                   <span>Service fee (8%)</span>
                   <span>${clientServiceFee}</span>
                 </div>
-                <p className="text-cream-muted/30 text-[10px]">Service fee helps cover platform operations, escrow, and customer support.</p>
+                <p className="text-cream-muted/30 text-[10px]">Service fee helps cover platform operations and customer support.</p>
                 <div className="flex justify-between font-bold text-lg border-t border-dark-border pt-3 mt-3 text-gold">
                   <span>Total</span>
                   <span>${total}</span>
