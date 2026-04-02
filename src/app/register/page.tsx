@@ -115,7 +115,7 @@ function RegisterForm() {
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Full Name</label>
               <input
-                type="text" required
+                type="text" 
                 className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -124,7 +124,7 @@ function RegisterForm() {
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Email</label>
               <input
-                type="email" required
+                type="text" inputMode="email"
                 className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -144,7 +144,7 @@ function RegisterForm() {
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Password</label>
               <input
-                type="password" required minLength={8}
+                type="password" minLength={8}
                 className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}

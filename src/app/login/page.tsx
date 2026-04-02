@@ -82,7 +82,7 @@ function LoginForm() {
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Email</label>
               <input
-                type="email" required
+                type="text" inputMode="email"
                 className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -91,7 +91,7 @@ function LoginForm() {
             <div>
               <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Password</label>
               <input
-                type="password" required
+                type="password"
                 className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
