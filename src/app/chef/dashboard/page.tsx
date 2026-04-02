@@ -383,19 +383,24 @@ export default function ChefDashboard() {
     const token = localStorage.getItem("token");
     if (!token) return;
     setStripeLoading(true);
+    const newWindow = window.open("about:blank", "_blank");
     try {
       const res = await fetch("/api/stripe/connect", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) { alert(data.error); return; }
+      if (!res.ok) { newWindow?.close(); alert(data.error); return; }
       if (data.alreadyOnboarded && data.dashboardUrl) {
-        window.open(data.dashboardUrl, "_blank");
+        if (newWindow) newWindow.location.href = data.dashboardUrl;
+        else window.location.href = data.dashboardUrl;
       } else if (data.onboardingUrl) {
-        window.location.href = data.onboardingUrl;
+        if (newWindow) newWindow.location.href = data.onboardingUrl;
+        else window.location.href = data.onboardingUrl;
+      } else {
+        newWindow?.close();
       }
-    } catch { alert("Failed to set up payments"); }
+    } catch { newWindow?.close(); alert("Failed to set up payments"); }
     finally { setStripeLoading(false); }
   };
 
@@ -1482,6 +1487,8 @@ export default function ChefDashboard() {
                       onClick={async () => {
                         const token = localStorage.getItem("token");
                         if (!token) return;
+                        // Open window synchronously (on user click) to avoid popup blocker
+                        const newWindow = window.open("about:blank", "_blank");
                         try {
                           const res = await fetch("/api/insurance/referral", {
                             method: "POST",
@@ -1489,8 +1496,16 @@ export default function ChefDashboard() {
                             body: JSON.stringify({ provider: "thimble" }),
                           });
                           const data = await res.json();
-                          if (data.redirectUrl) window.open(data.redirectUrl, "_blank");
-                        } catch { /* ignore */ }
+                          if (data.redirectUrl && newWindow) {
+                            newWindow.location.href = data.redirectUrl;
+                          } else if (data.redirectUrl) {
+                            window.location.href = data.redirectUrl;
+                          } else {
+                            newWindow?.close();
+                          }
+                        } catch {
+                          newWindow?.close();
+                        }
                       }}
                       className="bg-blue-600 text-white px-6 py-2 font-semibold text-xs tracking-[0.15em] uppercase hover:bg-blue-500 transition-colors"
                     >
