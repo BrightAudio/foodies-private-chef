@@ -6,7 +6,7 @@ export default function TermsPage() {
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 pt-28 pb-16">
         <h1 className="text-3xl font-bold mb-2 tracking-tight">Terms of Service</h1>
-        <p className="text-cream-muted mb-8">Foodies Private Chef Services</p>
+        <p className="text-cream-muted mb-8">Foodies: Private Chef Services</p>
 
         <div className="space-y-8 text-sm text-cream/90 leading-relaxed">
 
