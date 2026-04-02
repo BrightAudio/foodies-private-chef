@@ -151,7 +151,7 @@ export default function TermsPage() {
               <li>Be present or have an authorized adult present during the entire booking</li>
               <li>Provide reasonable notice (minimum 24 hours) for any changes to the booking</li>
               <li>Confirm booking completion promptly after the chef finishes the service</li>
-              <li>Not attempt to hire, solicit, or contact chefs outside the Foodies platform</li>
+              <li>Not attempt to hire, solicit, or contact chefs outside the Foodies platform for the purpose of circumventing the platform</li>
               <li>Treat chefs with respect and professionalism at all times</li>
             </ul>
           </section>

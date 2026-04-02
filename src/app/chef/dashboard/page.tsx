@@ -690,7 +690,7 @@ export default function ChefDashboard() {
             </p>
           </div>
           <div className="bg-dark-card border border-dark-border p-6">
-            <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Earnings (after fees)</p>
+            <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Earnings</p>
             <p className="text-3xl font-bold text-emerald-400 mt-1">${earnings.toFixed(2)}</p>
           </div>
         </div>

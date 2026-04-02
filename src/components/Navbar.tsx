@@ -44,7 +44,7 @@ export default function Navbar() {
             <span className="hidden sm:inline">FOODIES: PRIVATE CHEF SERVICES</span>
           </Link>
           <div className="flex items-center gap-8">
-            {(!user || user.role !== "ADMIN") && (
+            {(!user || (user.role !== "ADMIN" && user.role !== "CHEF")) && (
               <>
                 <Link href="/browse" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
                   Browse Chefs
@@ -59,6 +59,11 @@ export default function Navbar() {
                   Food Trucks
                 </Link>
               </>
+            )}
+            {user?.role === "CHEF" && (
+              <Link href="/community" className="text-cream-muted hover:text-gold text-sm font-medium tracking-wide uppercase transition-colors">
+                Community
+              </Link>
             )}
             {user ? (
               <>

@@ -60,6 +60,18 @@ interface AdminChef {
   activationStatus: string;
   trustScore: number;
   user: { name: string; email: string };
+  earnings: {
+    totalJobs: number;
+    grossRevenue: number;
+    platformFees: number;
+    chefEarnings: number;
+    ytdEarnings: number;
+    ytdPlatformFees: number;
+    ytdJobs: number;
+    needs1099: boolean;
+  };
+  incidents: { type: string; severity: string; status: string; description: string; createdAt: string }[];
+  praise: { rating: number; comment: string; date: string; clientName: string }[];
 }
 
 interface AdminUser {
@@ -229,6 +241,21 @@ export default function AdminDashboard() {
   const [locationBookingId, setLocationBookingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedChef, setExpandedChef] = useState<string | null>(null);
+  const [chefSection, setChefSection] = useState<Record<string, Set<string>>>({});
+
+  const toggleChefSection = (chefId: string, section: string) => {
+    setChefSection(prev => {
+      const current = prev[chefId] || new Set<string>();
+      const next = new Set(current);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return { ...prev, [chefId]: next };
+    });
+  };
+
+  const isChefSectionOpen = (chefId: string, section: string) => {
+    return chefSection[chefId]?.has(section) || false;
+  };
 
   useEffect(() => {
     fetchAll();
@@ -464,104 +491,229 @@ export default function AdminDashboard() {
                     <span className="text-cream-muted ml-4 shrink-0">{expandedChef === chef.id ? "▲" : "▼"}</span>
                   </div>
 
-                  {/* Expanded Detail */}
+                  {/* Expanded Detail — Foldable Sections */}
                   {expandedChef === chef.id && (
-                    <div className="border-t border-dark-border px-6 py-5 space-y-5">
-                      <div className="grid md:grid-cols-4 gap-6">
-                        {/* Profile Info */}
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Profile</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-cream-muted/60">Specialty:</span> {chef.specialtyDish}</p>
-                            <p><span className="text-cream-muted/60">Cuisine:</span> {chef.cuisineType || "—"}</p>
-                            <p><span className="text-cream-muted/60">Rate:</span> <span className="text-gold">${chef.hourlyRate}/hr</span></p>
-                            <p><span className="text-cream-muted/60">Jobs:</span> {chef.completedJobs}</p>
-                            <div className="flex items-center gap-1">
-                              <span className="text-cream-muted/60">Rating:</span>
-                              <StarRating rating={chef.avgRating} size="sm" />
-                              <span className="text-cream-muted/50 text-xs">({chef.reviewCount})</span>
+                    <div className="border-t border-dark-border px-6 py-4 space-y-2">
+
+                      {/* ──── 📊 Earnings & 1099 ──── */}
+                      <div className="border border-dark-border">
+                        <button onClick={() => toggleChefSection(chef.id, "earnings")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-dark-hover transition-colors">
+                          <span className="text-sm font-bold tracking-wide">📊 Earnings & 1099</span>
+                          <div className="flex items-center gap-3">
+                            {chef.earnings.needs1099 && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 font-bold">1099 REQUIRED</span>}
+                            <span className="text-gold font-bold text-sm">${chef.earnings.ytdEarnings.toLocaleString()}</span>
+                            <span className="text-cream-muted text-xs">{isChefSectionOpen(chef.id, "earnings") ? "▲" : "▼"}</span>
+                          </div>
+                        </button>
+                        {isChefSectionOpen(chef.id, "earnings") && (
+                          <div className="border-t border-dark-border px-4 py-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                              <div className="bg-dark p-3 border border-dark-border">
+                                <p className="text-[10px] text-cream-muted uppercase tracking-wider">YTD Earnings</p>
+                                <p className="text-lg font-bold text-emerald-400">${chef.earnings.ytdEarnings.toLocaleString()}</p>
+                              </div>
+                              <div className="bg-dark p-3 border border-dark-border">
+                                <p className="text-[10px] text-cream-muted uppercase tracking-wider">YTD Platform Fees</p>
+                                <p className="text-lg font-bold text-gold">${chef.earnings.ytdPlatformFees.toLocaleString()}</p>
+                              </div>
+                              <div className="bg-dark p-3 border border-dark-border">
+                                <p className="text-[10px] text-cream-muted uppercase tracking-wider">YTD Jobs</p>
+                                <p className="text-lg font-bold">{chef.earnings.ytdJobs}</p>
+                              </div>
+                              <div className="bg-dark p-3 border border-dark-border">
+                                <p className="text-[10px] text-cream-muted uppercase tracking-wider">1099 Status</p>
+                                <p className={`text-lg font-bold ${chef.earnings.needs1099 ? "text-amber-400" : "text-cream-muted/50"}`}>
+                                  {chef.earnings.needs1099 ? "Required" : "Under $600"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-xs text-cream-muted/60 space-y-1">
+                              <p>All-time: {chef.earnings.totalJobs} jobs · ${chef.earnings.grossRevenue.toLocaleString()} gross · ${chef.earnings.platformFees.toLocaleString()} platform fees · ${chef.earnings.chefEarnings.toLocaleString()} chef net</p>
                             </div>
                           </div>
-                        </div>
-
-                        {/* Certifications */}
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Certifications</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-cream-muted/60">ServSafe:</span> {chef.servSafeCertNumber}</p>
-                            <p><span className="text-cream-muted/60">SS Expiry:</span> {new Date(chef.servSafeCertExpiry).toLocaleDateString()}</p>
-                            <p><span className="text-cream-muted/60">GL Policy:</span> {chef.generalLiabilityPolicy}</p>
-                            <p><span className="text-cream-muted/60">GL Expiry:</span> {new Date(chef.generalLiabilityExpiry).toLocaleDateString()}</p>
-                            <p><span className="text-cream-muted/60">PL Policy:</span> {chef.productLiabilityPolicy}</p>
-                            <p><span className="text-cream-muted/60">PL Expiry:</span> {new Date(chef.productLiabilityExpiry).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-
-                        {/* Vehicle & BG Check */}
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Vehicle</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-cream-muted/60">Plate:</span> {chef.vehicleLicensePlate || "—"}</p>
-                            <p><span className="text-cream-muted/60">Vehicle:</span> {[chef.vehicleColor, chef.vehicleMake, chef.vehicleModel].filter(Boolean).join(" ") || "—"}</p>
-                            <p><span className="text-cream-muted/60">DL #:</span> {chef.driversLicenseNumber || "—"}</p>
-                            <p><span className="text-cream-muted/60">Will Travel:</span> {chef.willTravelToHomes ? "Yes" : "No"}</p>
-                          </div>
-                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted pt-2">Background Check</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-cream-muted/60">Name:</span> {chef.bgCheckFullName || "—"} {chef.bgCheckMiddleName ? `(${chef.bgCheckMiddleName})` : ""}</p>
-                            <p><span className="text-cream-muted/60">DOB:</span> {chef.bgCheckDOB || "—"}</p>
-                            <p><span className="text-cream-muted/60">SSN:</span> {chef.bgCheckSSN || chef.bgCheckSSNLast4 || "—"}</p>
-                            <p><span className="text-cream-muted/60">Address:</span> {chef.bgCheckAddress || "—"}{chef.bgCheckCity ? `, ${chef.bgCheckCity}` : ""}{chef.bgCheckState ? `, ${chef.bgCheckState}` : ""} {chef.bgCheckZipCode || ""}</p>
-                            <p><span className="text-cream-muted/60">Previous:</span> {chef.bgCheckPreviousAddress || "—"}</p>
-                            <p><span className="text-cream-muted/60">Consent:</span> {chef.bgCheckConsent ? "Yes" : "No"}</p>
-                          </div>
-                        </div>
-
-                        {/* Identity Documents & Consent */}
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Identity Documents</h4>
-                          <div className="space-y-2 text-sm">
-                            <p><span className="text-cream-muted/60">ID Type:</span> {chef.governmentIdType?.replace("_", " ") || "—"}</p>
-                            <p>
-                              <span className="text-cream-muted/60">ID Verification:</span>{" "}
-                              <span className={`text-xs font-bold px-2 py-0.5 ${
-                                chef.idVerificationStatus === "VERIFIED" ? "text-emerald-400 bg-emerald-500/10" :
-                                chef.idVerificationStatus === "PENDING" ? "text-gold bg-gold/10" :
-                                chef.idVerificationStatus === "FAILED" ? "text-red-400 bg-red-500/10" :
-                                "text-cream-muted/50 bg-dark-hover"
-                              }`}>
-                                {chef.idVerificationStatus || "NOT_SUBMITTED"}
-                              </span>
-                            </p>
-                            {chef.governmentIdUrl && (
-                              <div>
-                                <p className="text-cream-muted/60 mb-1">Gov ID:</p>
-                                <a href={chef.governmentIdUrl} target="_blank" rel="noopener noreferrer" className="block border border-dark-border hover:border-gold/50 transition-colors">
-                                  <img src={chef.governmentIdUrl} alt="Government ID" className="w-full h-20 object-cover" />
-                                </a>
-                              </div>
-                            )}
-                            {chef.selfieUrl && (
-                              <div>
-                                <p className="text-cream-muted/60 mb-1">Selfie:</p>
-                                <a href={chef.selfieUrl} target="_blank" rel="noopener noreferrer" className="block border border-dark-border hover:border-gold/50 transition-colors">
-                                  <img src={chef.selfieUrl} alt="Selfie" className="w-full h-20 object-cover" />
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                          <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted pt-2">Consent & Agreements</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-cream-muted/60">FCRA Signature:</span> {chef.fcraConsentSignature || "—"}</p>
-                            <p><span className="text-cream-muted/60">FCRA Signed:</span> {chef.fcraConsentTimestamp ? new Date(chef.fcraConsentTimestamp).toLocaleString() : "—"}</p>
-                            <p><span className="text-cream-muted/60">Terms Accepted:</span> {chef.termsAcceptedAt ? new Date(chef.termsAcceptedAt).toLocaleString() : "—"}</p>
-                            <p><span className="text-cream-muted/60">Anti-Poach:</span> {chef.antiPoachingAcceptedAt ? new Date(chef.antiPoachingAcceptedAt).toLocaleString() : "—"}</p>
-                          </div>
-                        </div>
+                        )}
                       </div>
 
-                      {/* Verification & Tier Controls */}
-                      <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-dark-border">
+                      {/* ──── ⭐ Praise ──── */}
+                      <div className="border border-dark-border">
+                        <button onClick={() => toggleChefSection(chef.id, "praise")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-dark-hover transition-colors">
+                          <span className="text-sm font-bold tracking-wide">⭐ Praise ({chef.praise.length})</span>
+                          <span className="text-cream-muted text-xs">{isChefSectionOpen(chef.id, "praise") ? "▲" : "▼"}</span>
+                        </button>
+                        {isChefSectionOpen(chef.id, "praise") && (
+                          <div className="border-t border-dark-border px-4 py-3 space-y-2 max-h-60 overflow-y-auto">
+                            {chef.praise.length === 0 ? (
+                              <p className="text-cream-muted/50 text-sm py-2">No praise yet</p>
+                            ) : chef.praise.map((p, i) => (
+                              <div key={i} className="bg-dark p-3 border border-dark-border text-sm">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <StarRating rating={p.rating} size="sm" />
+                                  <span className="text-cream-muted/50 text-xs">— {p.clientName}</span>
+                                  <span className="text-cream-muted/30 text-xs ml-auto">{new Date(p.date).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-cream-muted text-xs leading-relaxed">&ldquo;{p.comment}&rdquo;</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ──── ⚠️ Demerits / Incidents ──── */}
+                      <div className="border border-dark-border">
+                        <button onClick={() => toggleChefSection(chef.id, "demerits")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-dark-hover transition-colors">
+                          <span className="text-sm font-bold tracking-wide">⚠️ Demerits ({chef.incidents.length})</span>
+                          {chef.incidents.length > 0 && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                              chef.incidents.some(i => i.severity === "CRITICAL") ? "bg-red-500/20 text-red-400" :
+                              chef.incidents.some(i => i.severity === "HIGH") ? "bg-amber-500/20 text-amber-400" :
+                              "bg-dark-border text-cream-muted"
+                            }`}>
+                              {chef.incidents.filter(i => i.status === "OPEN" || i.status === "INVESTIGATING").length} open
+                            </span>
+                          )}
+                          <span className="text-cream-muted text-xs">{isChefSectionOpen(chef.id, "demerits") ? "▲" : "▼"}</span>
+                        </button>
+                        {isChefSectionOpen(chef.id, "demerits") && (
+                          <div className="border-t border-dark-border px-4 py-3 space-y-2 max-h-60 overflow-y-auto">
+                            {chef.incidents.length === 0 ? (
+                              <p className="text-cream-muted/50 text-sm py-2">No incidents on record</p>
+                            ) : chef.incidents.map((inc, i) => (
+                              <div key={i} className={`bg-dark p-3 border text-sm ${
+                                inc.severity === "CRITICAL" ? "border-red-500/40" :
+                                inc.severity === "HIGH" ? "border-amber-500/40" :
+                                "border-dark-border"
+                              }`}>
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                                    inc.severity === "CRITICAL" ? "bg-red-500/20 text-red-400" :
+                                    inc.severity === "HIGH" ? "bg-amber-500/20 text-amber-400" :
+                                    inc.severity === "MEDIUM" ? "bg-gold/20 text-gold" :
+                                    "bg-dark-border text-cream-muted"
+                                  }`}>{inc.severity}</span>
+                                  <span className="text-cream-muted/60 text-xs">{inc.type.replace(/_/g, " ")}</span>
+                                  <span className={`text-[10px] ml-auto px-2 py-0.5 ${
+                                    inc.status === "RESOLVED" ? "bg-emerald-500/10 text-emerald-400" :
+                                    inc.status === "DISMISSED" ? "bg-dark-border text-cream-muted/50" :
+                                    "bg-amber-500/10 text-amber-400"
+                                  }`}>{inc.status}</span>
+                                  <span className="text-cream-muted/30 text-xs">{new Date(inc.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-cream-muted text-xs leading-relaxed">{inc.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ──── 📋 Profile & Compliance ──── */}
+                      <div className="border border-dark-border">
+                        <button onClick={() => toggleChefSection(chef.id, "compliance")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-dark-hover transition-colors">
+                          <span className="text-sm font-bold tracking-wide">📋 Profile & Compliance</span>
+                          <span className="text-cream-muted text-xs">{isChefSectionOpen(chef.id, "compliance") ? "▲" : "▼"}</span>
+                        </button>
+                        {isChefSectionOpen(chef.id, "compliance") && (
+                          <div className="border-t border-dark-border px-4 py-4">
+                            <div className="grid md:grid-cols-4 gap-6">
+                              {/* Profile Info */}
+                              <div className="space-y-3">
+                                <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Profile</h4>
+                                <div className="space-y-1 text-sm">
+                                  <p><span className="text-cream-muted/60">Specialty:</span> {chef.specialtyDish}</p>
+                                  <p><span className="text-cream-muted/60">Cuisine:</span> {chef.cuisineType || "—"}</p>
+                                  <p><span className="text-cream-muted/60">Rate:</span> <span className="text-gold">${chef.hourlyRate}/hr</span></p>
+                                  <p><span className="text-cream-muted/60">Jobs:</span> {chef.completedJobs}</p>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-cream-muted/60">Rating:</span>
+                                    <StarRating rating={chef.avgRating} size="sm" />
+                                    <span className="text-cream-muted/50 text-xs">({chef.reviewCount})</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Certifications */}
+                              <div className="space-y-3">
+                                <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Certifications</h4>
+                                <div className="space-y-1 text-sm">
+                                  <p><span className="text-cream-muted/60">ServSafe:</span> {chef.servSafeCertNumber}</p>
+                                  <p><span className="text-cream-muted/60">SS Expiry:</span> {new Date(chef.servSafeCertExpiry).toLocaleDateString()}</p>
+                                  <p><span className="text-cream-muted/60">GL Policy:</span> {chef.generalLiabilityPolicy}</p>
+                                  <p><span className="text-cream-muted/60">GL Expiry:</span> {new Date(chef.generalLiabilityExpiry).toLocaleDateString()}</p>
+                                  <p><span className="text-cream-muted/60">PL Policy:</span> {chef.productLiabilityPolicy}</p>
+                                  <p><span className="text-cream-muted/60">PL Expiry:</span> {new Date(chef.productLiabilityExpiry).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                              {/* Vehicle & BG Check */}
+                              <div className="space-y-3">
+                                <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Vehicle</h4>
+                                <div className="space-y-1 text-sm">
+                                  <p><span className="text-cream-muted/60">Plate:</span> {chef.vehicleLicensePlate || "—"}</p>
+                                  <p><span className="text-cream-muted/60">Vehicle:</span> {[chef.vehicleColor, chef.vehicleMake, chef.vehicleModel].filter(Boolean).join(" ") || "—"}</p>
+                                  <p><span className="text-cream-muted/60">DL #:</span> {chef.driversLicenseNumber || "—"}</p>
+                                  <p><span className="text-cream-muted/60">Will Travel:</span> {chef.willTravelToHomes ? "Yes" : "No"}</p>
+                                </div>
+                                <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted pt-2">Background Check</h4>
+                                <div className="space-y-1 text-sm">
+                                  <p><span className="text-cream-muted/60">Name:</span> {chef.bgCheckFullName || "—"} {chef.bgCheckMiddleName ? `(${chef.bgCheckMiddleName})` : ""}</p>
+                                  <p><span className="text-cream-muted/60">DOB:</span> {chef.bgCheckDOB || "—"}</p>
+                                  <p><span className="text-cream-muted/60">SSN:</span> {chef.bgCheckSSN || chef.bgCheckSSNLast4 || "—"}</p>
+                                  <p><span className="text-cream-muted/60">Address:</span> {chef.bgCheckAddress || "—"}{chef.bgCheckCity ? `, ${chef.bgCheckCity}` : ""}{chef.bgCheckState ? `, ${chef.bgCheckState}` : ""} {chef.bgCheckZipCode || ""}</p>
+                                  <p><span className="text-cream-muted/60">Previous:</span> {chef.bgCheckPreviousAddress || "—"}</p>
+                                  <p><span className="text-cream-muted/60">Consent:</span> {chef.bgCheckConsent ? "Yes" : "No"}</p>
+                                </div>
+                              </div>
+                              {/* Identity Documents & Consent */}
+                              <div className="space-y-3">
+                                <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted">Identity Documents</h4>
+                                <div className="space-y-2 text-sm">
+                                  <p><span className="text-cream-muted/60">ID Type:</span> {chef.governmentIdType?.replace("_", " ") || "—"}</p>
+                                  <p>
+                                    <span className="text-cream-muted/60">ID Verification:</span>{" "}
+                                    <span className={`text-xs font-bold px-2 py-0.5 ${
+                                      chef.idVerificationStatus === "VERIFIED" ? "text-emerald-400 bg-emerald-500/10" :
+                                      chef.idVerificationStatus === "PENDING" ? "text-gold bg-gold/10" :
+                                      chef.idVerificationStatus === "FAILED" ? "text-red-400 bg-red-500/10" :
+                                      "text-cream-muted/50 bg-dark-hover"
+                                    }`}>
+                                      {chef.idVerificationStatus || "NOT_SUBMITTED"}
+                                    </span>
+                                  </p>
+                                  {chef.governmentIdUrl && (
+                                    <div>
+                                      <p className="text-cream-muted/60 mb-1">Gov ID:</p>
+                                      <a href={chef.governmentIdUrl} target="_blank" rel="noopener noreferrer" className="block border border-dark-border hover:border-gold/50 transition-colors">
+                                        <img src={chef.governmentIdUrl} alt="Government ID" className="w-full h-20 object-cover" />
+                                      </a>
+                                    </div>
+                                  )}
+                                  {chef.selfieUrl && (
+                                    <div>
+                                      <p className="text-cream-muted/60 mb-1">Selfie:</p>
+                                      <a href={chef.selfieUrl} target="_blank" rel="noopener noreferrer" className="block border border-dark-border hover:border-gold/50 transition-colors">
+                                        <img src={chef.selfieUrl} alt="Selfie" className="w-full h-20 object-cover" />
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                                <h4 className="text-xs font-bold tracking-wider uppercase text-cream-muted pt-2">Consent & Agreements</h4>
+                                <div className="space-y-1 text-sm">
+                                  <p><span className="text-cream-muted/60">FCRA Signature:</span> {chef.fcraConsentSignature || "—"}</p>
+                                  <p><span className="text-cream-muted/60">FCRA Signed:</span> {chef.fcraConsentTimestamp ? new Date(chef.fcraConsentTimestamp).toLocaleString() : "—"}</p>
+                                  <p><span className="text-cream-muted/60">Terms Accepted:</span> {chef.termsAcceptedAt ? new Date(chef.termsAcceptedAt).toLocaleString() : "—"}</p>
+                                  <p><span className="text-cream-muted/60">Anti-Poach:</span> {chef.antiPoachingAcceptedAt ? new Date(chef.antiPoachingAcceptedAt).toLocaleString() : "—"}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ──── ⚙️ Admin Controls ──── */}
+                      <div className="border border-dark-border">
+                        <button onClick={() => toggleChefSection(chef.id, "controls")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-dark-hover transition-colors">
+                          <span className="text-sm font-bold tracking-wide">⚙️ Admin Controls</span>
+                          <span className="text-cream-muted text-xs">{isChefSectionOpen(chef.id, "controls") ? "▲" : "▼"}</span>
+                        </button>
+                        {isChefSectionOpen(chef.id, "controls") && (
+                          <div className="border-t border-dark-border px-4 py-4 space-y-5">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-cream-muted/60 uppercase tracking-wider">Verification:</span>
                           <select
@@ -604,7 +756,6 @@ export default function AdminDashboard() {
                           </select>
                           {chef.tierOverride && <span className="text-[10px] text-amber-400">manually overridden</span>}
                         </div>
-                      </div>
 
                       {/* Insurance Compliance */}
                       <div className="bg-dark border border-dark-border p-4 space-y-3">
@@ -772,6 +923,11 @@ export default function AdminDashboard() {
                           </button>
                         )}
                       </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* end Admin Controls */}
+
                     </div>
                   )}
                 </div>
