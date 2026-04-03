@@ -310,10 +310,15 @@ export default function ChefDashboard() {
     const token = localStorage.getItem("token");
     if (!token) { window.location.href = "/login"; return; }
     setLoading(true);
-    const url = filter ? `/api/bookings?status=${filter}&limit=50` : "/api/bookings?limit=50";
+    const apiFilter = filter === "active" ? "" : filter;
+    const url = apiFilter ? `/api/bookings?status=${apiFilter}&limit=50` : "/api/bookings?limit=50";
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
-    setBookings(data.bookings || data);
+    let results = data.bookings || data;
+    if (filter === "active") {
+      results = results.filter((b: Booking) => b.status === "CONFIRMED" || b.status === "PENDING_COMPLETION");
+    }
+    setBookings(results);
     setLoading(false);
   };
 
@@ -703,21 +708,27 @@ export default function ChefDashboard() {
         })()}
 
         {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-dark-card border border-dark-border p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <button onClick={() => { setDashTab("bookings"); setFilter(""); }} className="bg-dark-card border border-dark-border p-6 text-left hover:border-gold/30 transition-colors">
             <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Total Bookings</p>
             <p className="text-3xl font-bold mt-1">{bookings.length}</p>
-          </div>
-          <div className="bg-dark-card border border-dark-border p-6">
+          </button>
+          <button onClick={() => { setDashTab("bookings"); setFilter("active"); }} className="bg-dark-card border border-dark-border p-6 text-left hover:border-blue-500/30 transition-colors">
+            <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Active Jobs</p>
+            <p className="text-3xl font-bold text-blue-400 mt-1">
+              {bookings.filter((b) => b.status === "CONFIRMED" || b.status === "PENDING_COMPLETION").length}
+            </p>
+          </button>
+          <button onClick={() => { setDashTab("bookings"); setFilter("PENDING"); }} className="bg-dark-card border border-dark-border p-6 text-left hover:border-gold/30 transition-colors">
             <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Pending</p>
             <p className="text-3xl font-bold text-gold mt-1">
               {bookings.filter((b) => b.status === "PENDING").length}
             </p>
-          </div>
-          <div className="bg-dark-card border border-dark-border p-6">
+          </button>
+          <button onClick={() => { setDashTab("earnings"); }} className="bg-dark-card border border-dark-border p-6 text-left hover:border-emerald-500/30 transition-colors">
             <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Earnings</p>
             <p className="text-3xl font-bold text-emerald-400 mt-1">${earnings.toFixed(2)}</p>
-          </div>
+          </button>
         </div>
 
         {/* Dashboard Tabs */}
@@ -1053,13 +1064,13 @@ export default function ChefDashboard() {
           <>
         {/* Filter */}
         <div className="flex gap-2 mb-6">
-          {["", "PENDING", "CONFIRMED", "PENDING_COMPLETION", "COMPLETED", "CANCELLED"].map((s) => (
+          {["", "active", "PENDING", "CONFIRMED", "PENDING_COMPLETION", "COMPLETED", "CANCELLED"].map((s) => (
             <button
               key={s}
               onClick={() => setFilter(s)}
               className={`px-5 py-2.5 text-sm font-medium transition-colors ${filter === s ? "bg-gold text-dark" : "bg-dark-card border border-dark-border text-cream-muted hover:border-gold/30"}`}
             >
-              {s || "All"}
+              {s === "active" ? "Active" : s || "All"}
             </button>
           ))}
         </div>
