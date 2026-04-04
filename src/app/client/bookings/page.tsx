@@ -226,6 +226,27 @@ export default function ClientBookings() {
       <div className="max-w-4xl mx-auto px-4 pt-28 pb-16">
         <h1 className="text-3xl font-bold mb-6 tracking-tight">My Bookings</h1>
 
+        {/* Review prompt banner for completed bookings without reviews */}
+        {!loading && bookings.filter(b => b.status === "COMPLETED" && !b.review).length > 0 && (
+          <div className="mb-6 bg-gold/10 border border-gold/30 p-5">
+            <p className="font-semibold text-gold mb-1">⭐ How was your experience?</p>
+            <p className="text-sm text-cream-muted mb-3">
+              You have {bookings.filter(b => b.status === "COMPLETED" && !b.review).length} completed
+              booking{bookings.filter(b => b.status === "COMPLETED" && !b.review).length > 1 ? "s" : ""} awaiting a review.
+              Your feedback helps chefs improve and other clients choose.
+            </p>
+            <button
+              onClick={() => {
+                const unreviewd = bookings.find(b => b.status === "COMPLETED" && !b.review);
+                if (unreviewd) setReviewingId(unreviewd.id);
+              }}
+              className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
+            >
+              Write a Review
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <p className="text-cream-muted">Loading...</p>
         ) : bookings.length === 0 ? (

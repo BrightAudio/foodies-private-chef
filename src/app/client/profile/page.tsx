@@ -25,6 +25,8 @@ export default function ClientProfilePage() {
   const [saved, setSaved] = useState(false);
   const [userName, setUserName] = useState("");
   const [bio, setBio] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [favoriteCuisines, setFavoriteCuisines] = useState<string[]>([]);
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
   const [allergies, setAllergies] = useState<string[]>([]);
@@ -39,6 +41,7 @@ export default function ClientProfilePage() {
         if (data.user) setUserName(data.user.name);
         if (data.profile) {
           setBio(data.profile.bio || "");
+          setProfileImageUrl(data.profile.profileImageUrl || "");
           setFavoriteCuisines(data.profile.favoriteCuisines || []);
           setDietaryRestrictions(data.profile.dietaryRestrictions || []);
           setAllergies(data.profile.allergies || []);
@@ -52,6 +55,28 @@ export default function ClientProfilePage() {
     setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/uploads", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfileImageUrl(data.url);
+      }
+    } catch { /* ignore */ }
+    setUploadingPhoto(false);
+  };
+
   const handleSave = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -61,7 +86,7 @@ export default function ClientProfilePage() {
       await fetch("/api/client/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ bio, favoriteCuisines, dietaryRestrictions, allergies }),
+        body: JSON.stringify({ bio, profileImageUrl, favoriteCuisines, dietaryRestrictions, allergies }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -82,6 +107,37 @@ export default function ClientProfilePage() {
         <div className="bg-dark-card border border-dark-border p-6 mb-6">
           <p className="text-xs font-medium tracking-wider uppercase text-cream-muted mb-1">Name</p>
           <p className="text-lg font-semibold">{userName}</p>
+        </div>
+
+        {/* Profile Photo */}
+        <div className="bg-dark-card border border-dark-border p-6 mb-6">
+          <p className="text-xs font-medium tracking-wider uppercase text-cream-muted mb-3">Profile Photo</p>
+          <div className="flex items-center gap-5">
+            {profileImageUrl ? (
+              <img
+                src={profileImageUrl}
+                alt="Profile"
+                className="w-20 h-20 rounded-full object-cover border-2 border-gold/30"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-dark border-2 border-dark-border flex items-center justify-center text-cream-muted text-2xl">
+                {userName?.charAt(0)?.toUpperCase() || "?"}
+              </div>
+            )}
+            <div>
+              <label className="cursor-pointer inline-block bg-dark border border-gold/30 text-gold px-4 py-2 text-sm font-medium hover:bg-gold/10 transition-colors">
+                {uploadingPhoto ? "Uploading..." : "Choose Photo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  disabled={uploadingPhoto}
+                />
+              </label>
+              <p className="text-xs text-cream-muted mt-1">JPG, PNG, or WebP. Max 5 MB.</p>
+            </div>
+          </div>
         </div>
 
         {/* Bio */}

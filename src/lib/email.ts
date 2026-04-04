@@ -54,6 +54,31 @@ export async function sendVerificationEmail(opts: { email: string; name: string;
   );
 }
 
+export async function sendPasswordResetEmail(opts: { email: string; name: string; token: string }) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const resetUrl = `${appUrl}/reset-password?token=${opts.token}`;
+
+  await send(
+    opts.email,
+    "Reset your Foodies password",
+    `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#0B0B0B;color:#F5F0E8;padding:40px;">
+      <h1 style="color:#C8A96A;font-size:24px;margin:0 0 24px;">Password Reset</h1>
+      <p>Hello ${opts.name},</p>
+      <p>We received a request to reset your password. Click below to choose a new one.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${resetUrl}" style="background:#C8A96A;color:#0B0B0B;padding:14px 32px;text-decoration:none;font-weight:bold;font-size:14px;letter-spacing:0.1em;text-transform:uppercase;">
+          Reset Password
+        </a>
+      </div>
+      <p style="color:#B8B0A2;font-size:12px;">Or copy this link: ${resetUrl}</p>
+      <p style="color:#B8B0A2;font-size:12px;">This link expires in 1 hour. If you didn&rsquo;t request this, you can safely ignore this email.</p>
+      <p style="color:#B8B0A2;font-size:12px;margin-top:32px;">&mdash; The Foodies Team</p>
+    </div>
+    `
+  );
+}
+
 export async function sendBookingCreatedToChef(opts: {
   chefEmail: string;
   chefName: string;
@@ -129,6 +154,43 @@ export async function sendBookingCompletedToClient(opts: {
       <p>We hope you enjoyed your private dining experience with Chef ${opts.chefName}.</p>
       <p>We'd love to hear your feedback — log in to leave a review and help other diners discover great chefs.</p>
       <p style="color:#B8B0A2;font-size:12px;margin-top:32px;">— The Foodies Team</p>
+    </div>
+    `
+  );
+}
+
+export async function sendPaymentReceiptEmail(opts: {
+  clientEmail: string;
+  clientName: string;
+  chefName: string;
+  date: string;
+  subtotal: number;
+  platformFee: number;
+  total: number;
+  bookingId: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  await send(
+    opts.clientEmail,
+    `Payment Receipt — Foodies Booking`,
+    `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#0B0B0B;color:#F5F0E8;padding:40px;">
+      <h1 style="color:#C8A96A;font-size:24px;margin:0 0 24px;">Payment Receipt</h1>
+      <p>Hello ${opts.clientName},</p>
+      <p>Your payment has been processed for your booking with Chef ${opts.chefName}.</p>
+      <table style="width:100%;margin:24px 0;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Date</td><td style="padding:8px 0;text-align:right;">${opts.date}</td></tr>
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Subtotal</td><td style="padding:8px 0;text-align:right;">$${opts.subtotal.toFixed(2)}</td></tr>
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Service Fee</td><td style="padding:8px 0;text-align:right;">$${opts.platformFee.toFixed(2)}</td></tr>
+        <tr style="border-top:1px solid #333;"><td style="padding:12px 0;font-weight:bold;color:#C8A96A;">Total</td><td style="padding:12px 0;text-align:right;font-weight:bold;color:#C8A96A;">$${opts.total.toFixed(2)}</td></tr>
+      </table>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${appUrl}/client/bookings" style="background:#C8A96A;color:#0B0B0B;padding:14px 32px;text-decoration:none;font-weight:bold;font-size:14px;letter-spacing:0.1em;text-transform:uppercase;">
+          View Booking
+        </a>
+      </div>
+      <p style="color:#B8B0A2;font-size:12px;margin-top:32px;">Booking ID: ${opts.bookingId}</p>
+      <p style="color:#B8B0A2;font-size:12px;">— The Foodies Team</p>
     </div>
     `
   );

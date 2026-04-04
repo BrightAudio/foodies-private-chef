@@ -122,6 +122,12 @@ function LoginForm() {
             >
               {loading ? "Signing In..." : "Sign In"}
             </button>
+
+            <div className="text-center">
+              <Link href="/forgot-password" className="text-gold text-sm hover:text-gold-light transition-colors">
+                Forgot your password?
+              </Link>
+            </div>
           </form>
         </div>
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { sendPaymentReceiptEmail } from "@/lib/email";
 
 // POST /api/payments/webhook — Stripe webhook handler
 // Handles platform events (STRIPE_WEBHOOK_SECRET) and connected-account events (STRIPE_CONNECT_WEBHOOK_SECRET)
@@ -66,14 +67,34 @@ export async function POST(req: NextRequest) {
       const pi = event.data.object;
       const bookingId = pi.metadata?.bookingId;
       if (bookingId) {
-        await prisma.booking.update({
+        const booking = await prisma.booking.update({
           where: { id: bookingId },
           data: {
             paymentStatus: "RELEASED",
             payoutStatus: "RELEASED",
             payoutReleasedAt: new Date(),
           },
+          include: {
+            client: { select: { email: true, name: true } },
+            chefProfile: { include: { user: { select: { name: true } } } },
+          },
         });
+
+        // Send payment receipt email
+        try {
+          await sendPaymentReceiptEmail({
+            clientEmail: booking.client.email,
+            clientName: booking.client.name,
+            chefName: booking.chefProfile.user.name,
+            date: new Date(booking.date).toLocaleDateString(),
+            subtotal: booking.subtotal,
+            platformFee: booking.platformFee,
+            total: booking.total,
+            bookingId: booking.id,
+          });
+        } catch (emailErr) {
+          console.error("Failed to send receipt email:", emailErr);
+        }
       }
       break;
     }
@@ -150,6 +171,31 @@ export async function POST(req: NextRequest) {
           where: { stripeConnectAccountId: account.id },
           data: { stripeConnectOnboarded: true },
         });
+      }
+      break;
+    }
+
+    // Dispute opened by cardholder
+    case "charge.dispute.created": {
+      const dispute = event.data.object;
+      const paymentIntentId =
+        typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id;
+
+      if (paymentIntentId) {
+        const booking = await prisma.booking.findFirst({
+          where: { stripePaymentIntentId: paymentIntentId },
+        });
+        if (booking) {
+          await prisma.booking.update({
+            where: { id: booking.id },
+            data: { paymentStatus: "DISPUTED" },
+          });
+          console.error(
+            `DISPUTE opened: booking=${booking.id}, pi=${paymentIntentId}, reason=${dispute.reason}, amount=${dispute.amount}`
+          );
+        }
       }
       break;
     }

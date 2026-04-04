@@ -17,6 +17,8 @@ model User {
   emailVerified         Boolean   @default(false)
   emailVerifyToken      String?   @unique
   emailVerifyTokenExp   DateTime?
+  passwordResetToken    String?   @unique
+  passwordResetExp      DateTime?
   termsAcceptedAt       DateTime?  // When client accepted platform ToS
   liabilityWaiverAt     DateTime?  // When client signed liability waiver
   antiPoachingStrikes   Int       @default(0) // Number of anti-poaching violations
@@ -263,7 +265,7 @@ model Booking {
 
   // Payment — Stripe Connect
   stripePaymentIntentId String?
-  paymentStatus         String  @default("UNPAID") // UNPAID | CAPTURED | PAID | RELEASED | REFUNDED
+  paymentStatus         String  @default("UNPAID") // UNPAID | CAPTURED | PAID | RELEASED | REFUNDED | DISPUTED
   stripeTransferId      String? // Stripe Transfer ID for chef payout
   payoutStatus          String  @default("PENDING") // PENDING | RELEASED | PAID | FAILED
   payoutReleasedAt      DateTime?
