@@ -160,6 +160,19 @@ export default function ChefDashboard() {
   const [cardDetails, setCardDetails] = useState<Record<string, { number: string; exp_month: number; exp_year: number; cvc: string } | null>>({});
   const [cardDetailsLoading, setCardDetailsLoading] = useState<Record<string, boolean>>({});
 
+  // Grocery list state (new flow: chef creates list → AI estimates → client approves → card funded)
+  interface GroceryListItem { name: string; quantity: string; unit: string; estimatedPrice?: number }
+  interface GroceryListRecord {
+    id: string; bookingId: string; items: string; estimatedTotal: number;
+    nearbyStores: string | null; aiModel: string | null; status: string;
+    clientApproved: boolean; clientNote: string | null; rejectedReason: string | null;
+    createdAt: string; groceryCards?: { id: string; status: string }[];
+  }
+  const [groceryLists, setGroceryLists] = useState<Record<string, GroceryListRecord>>({});
+  const [groceryListForm, setGroceryListForm] = useState<string | null>(null); // bookingId being edited
+  const [groceryListItems, setGroceryListItems] = useState<{ name: string; quantity: string; unit: string }[]>([]);
+  const [groceryListSubmitting, setGroceryListSubmitting] = useState(false);
+
   // Fetch earnings report when tab opens
   useEffect(() => {
     if (dashTab !== "earnings" || earningsReport) return;
@@ -676,6 +689,65 @@ export default function ChefDashboard() {
       }
     } catch { toast.error("Network error"); }
     finally { setCardDetailsLoading(prev => ({ ...prev, [bookingId]: false })); }
+  };
+
+  // Grocery list functions
+  const fetchGroceryList = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/grocery-lists?bookingId=${bookingId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const lists = await res.json();
+        if (lists.length > 0) setGroceryLists(prev => ({ ...prev, [bookingId]: lists[0] }));
+      }
+    } catch {}
+  };
+
+  const submitGroceryList = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const validItems = groceryListItems.filter(i => i.name.trim());
+    if (validItems.length === 0) { toast.error("Add at least one item"); return; }
+    setGroceryListSubmitting(true);
+    try {
+      const res = await fetch("/api/grocery-lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bookingId, items: validItems }),
+      });
+      if (res.ok) {
+        const list = await res.json();
+        setGroceryLists(prev => ({ ...prev, [bookingId]: list }));
+        setGroceryListForm(null);
+        setGroceryListItems([]);
+        toast.success("Grocery list sent! AI estimated costs. Awaiting client approval.");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to submit grocery list");
+      }
+    } finally { setGroceryListSubmitting(false); }
+  };
+
+  const fundGroceryCard = async (listId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setGroceryListSubmitting(true);
+    try {
+      const res = await fetch("/api/grocery-lists", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ listId, action: "fund" }),
+      });
+      if (res.ok) {
+        toast.success("Virtual card funded! Check below for card details.");
+        fetchGroceryList(bookingId);
+        fetchGroceryCard(bookingId);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to fund card");
+      }
+    } finally { setGroceryListSubmitting(false); }
   };
 
   const statusColors: Record<string, string> = {
@@ -1384,17 +1456,91 @@ export default function ChefDashboard() {
                   )}
                 </div>
 
-                {/* Grocery Card Section */}
-                {["CONFIRMED", "PREPARING"].includes(b.status) && (
-                  <div className="mt-4 border-t border-dark-border pt-4">
-                    {!groceryCards[b.id] ? (
-                      <button onClick={() => fetchGroceryCard(b.id)} className="text-sm text-gold hover:text-gold-light transition-colors">
-                        🛒 Check Grocery Card
-                      </button>
-                    ) : (
+                {/* Grocery List & Card Section */}
+                {["ACCEPTED", "CONFIRMED", "PREPARING"].includes(b.status) && (
+                  <div className="mt-4 border-t border-dark-border pt-4 space-y-3">
+                    {/* Load existing grocery list */}
+                    {!groceryLists[b.id] && !groceryCards[b.id] && groceryListForm !== b.id && (
+                      <div className="flex gap-3">
+                        <button onClick={() => { fetchGroceryList(b.id); fetchGroceryCard(b.id); }} className="text-sm text-cream-muted hover:text-cream transition-colors">
+                          🛒 Check Grocery Status
+                        </button>
+                        <button onClick={() => { setGroceryListForm(b.id); setGroceryListItems([{ name: "", quantity: "", unit: "" }]); }} className="text-sm text-gold hover:text-gold-light transition-colors">
+                          📝 Create Grocery List
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Grocery List Creation Form */}
+                    {groceryListForm === b.id && (
+                      <div className="bg-dark border border-gold/20 p-5 space-y-3">
+                        <h4 className="text-sm font-bold text-gold">📝 Create Grocery List</h4>
+                        <p className="text-xs text-cream-muted">Add items you need. AI will estimate costs from nearby stores. Client must approve before a virtual card is funded from your booking earnings.</p>
+                        {groceryListItems.map((item, i) => (
+                          <div key={i} className="flex gap-2 items-center">
+                            <input type="text" placeholder="Item name" value={item.name} onChange={(e) => { const n = [...groceryListItems]; n[i].name = e.target.value; setGroceryListItems(n); }} className="flex-1 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                            <input type="text" placeholder="Qty" value={item.quantity} onChange={(e) => { const n = [...groceryListItems]; n[i].quantity = e.target.value; setGroceryListItems(n); }} className="w-16 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                            <input type="text" placeholder="Unit" value={item.unit} onChange={(e) => { const n = [...groceryListItems]; n[i].unit = e.target.value; setGroceryListItems(n); }} className="w-20 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                            <button onClick={() => setGroceryListItems(groceryListItems.filter((_, j) => j !== i))} className="text-red-400 text-xs hover:text-red-300">✕</button>
+                          </div>
+                        ))}
+                        <button onClick={() => setGroceryListItems([...groceryListItems, { name: "", quantity: "", unit: "" }])} className="text-xs text-gold hover:text-gold-light transition-colors">+ Add Item</button>
+                        <div className="flex gap-3 pt-2">
+                          <button onClick={() => submitGroceryList(b.id)} disabled={groceryListSubmitting} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">
+                            {groceryListSubmitting ? "Estimating..." : "Submit & Get AI Estimate"}
+                          </button>
+                          <button onClick={() => { setGroceryListForm(null); setGroceryListItems([]); }} className="text-cream-muted text-sm hover:text-cream transition-colors">Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Grocery List Status */}
+                    {groceryLists[b.id] && (
                       <div className="bg-dark border border-dark-border p-4 space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-bold text-gold">💳 Stripe Virtual Grocery Card</h4>
+                          <h4 className="text-sm font-bold text-gold">📋 Grocery List</h4>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                            groceryLists[b.id].status === "PENDING" ? "text-amber-400 bg-amber-500/10" :
+                            groceryLists[b.id].status === "APPROVED" ? "text-emerald-400 bg-emerald-500/10" :
+                            groceryLists[b.id].status === "FUNDED" ? "text-gold bg-gold/10" :
+                            groceryLists[b.id].status === "REJECTED" ? "text-red-400 bg-red-500/10" :
+                            "text-cream-muted bg-dark-border"
+                          }`}>{groceryLists[b.id].status}</span>
+                        </div>
+                        <div className="text-xs text-cream-muted space-y-1">
+                          {(() => { try { const items = JSON.parse(groceryLists[b.id].items) as GroceryListItem[]; return items.map((item, i) => (
+                            <div key={i} className="flex justify-between"><span>{item.quantity} {item.unit} {item.name}</span><span className="text-gold">${(item.estimatedPrice || 0).toFixed(2)}</span></div>
+                          )); } catch { return null; } })()}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm border-t border-dark-border pt-2">
+                          <span>AI Estimate: <strong className="text-gold">${groceryLists[b.id].estimatedTotal.toFixed(2)}</strong></span>
+                          {groceryLists[b.id].nearbyStores && (
+                            <span className="text-xs text-cream-muted">Stores: {(() => { try { return JSON.parse(groceryLists[b.id].nearbyStores!).join(", "); } catch { return groceryLists[b.id].nearbyStores; } })()}</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-cream-muted/60">Funded from your booking earnings (${b.subtotal?.toFixed(2) || "—"})</p>
+                        {groceryLists[b.id].status === "PENDING" && (
+                          <p className="text-xs text-amber-400">⏳ Waiting for client approval...</p>
+                        )}
+                        {groceryLists[b.id].status === "REJECTED" && (
+                          <p className="text-xs text-red-400">❌ Client declined{groceryLists[b.id].rejectedReason ? `: ${groceryLists[b.id].rejectedReason}` : ""}</p>
+                        )}
+                        {groceryLists[b.id].clientNote && (
+                          <p className="text-xs text-cream-muted">Client note: {groceryLists[b.id].clientNote}</p>
+                        )}
+                        {groceryLists[b.id].status === "APPROVED" && !groceryCards[b.id] && (
+                          <button onClick={() => fundGroceryCard(groceryLists[b.id].id, b.id)} disabled={groceryListSubmitting} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">
+                            {groceryListSubmitting ? "Funding..." : "💳 Fund Virtual Card"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Active Grocery Card */}
+                    {groceryCards[b.id] && (
+                      <div className="bg-dark border border-dark-border p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-gold">💳 Virtual Grocery Card</h4>
                           <span className={`text-[10px] font-bold px-2 py-0.5 ${
                             groceryCards[b.id].status === "ACTIVE" ? "text-emerald-400 bg-emerald-500/10" :
                             groceryCards[b.id].status === "FROZEN" ? "text-blue-400 bg-blue-500/10" :
@@ -1408,22 +1554,13 @@ export default function ChefDashboard() {
                           <span>Spent: <strong>${groceryCards[b.id].spent.toFixed(2)}</strong></span>
                           <span>Remaining: <strong className="text-emerald-400">${(groceryCards[b.id].budget - groceryCards[b.id].spent).toFixed(2)}</strong></span>
                         </div>
-                        {groceryCards[b.id].approvedItems && (
-                          <div className="text-xs text-cream-muted">
-                            <span className="font-medium">Approved items:</span> {(() => { try { return JSON.parse(groceryCards[b.id].approvedItems!).join(", "); } catch { return groceryCards[b.id].approvedItems; } })()}
-                          </div>
-                        )}
 
                         {/* Card Details (number, exp, cvc) */}
                         {groceryCards[b.id].stripeCardId && groceryCards[b.id].status === "ACTIVE" && (
                           <div className="space-y-2">
                             {!cardDetails[b.id] ? (
-                              <button
-                                onClick={() => viewCardDetails(groceryCards[b.id].id, b.id)}
-                                disabled={cardDetailsLoading[b.id]}
-                                className="text-sm text-gold hover:text-gold-light transition-colors disabled:opacity-40"
-                              >
-                                {cardDetailsLoading[b.id] ? "Loading..." : "👁 View Card Details (Number, Exp, CVC)"}
+                              <button onClick={() => viewCardDetails(groceryCards[b.id].id, b.id)} disabled={cardDetailsLoading[b.id]} className="text-sm text-gold hover:text-gold-light transition-colors disabled:opacity-40">
+                                {cardDetailsLoading[b.id] ? "Loading..." : "👁 View Card Details"}
                               </button>
                             ) : (
                               <div className="bg-gradient-to-br from-dark-card to-dark border border-gold/30 p-4 rounded space-y-2">
@@ -1436,29 +1573,9 @@ export default function ChefDashboard() {
                                   <span className="text-cream-muted">EXP <strong className="text-cream">{String(cardDetails[b.id]!.exp_month).padStart(2, "0")}/{cardDetails[b.id]!.exp_year}</strong></span>
                                   <span className="text-cream-muted">CVC <strong className="text-cream">{cardDetails[b.id]!.cvc}</strong></span>
                                 </div>
-                                <p className="text-[10px] text-gold/70 mt-2"> Add to Apple Pay: Open Wallet app → + → Debit Card → Enter details above</p>
+                                <p className="text-[10px] text-gold/70 mt-2">Add to Apple Pay: Open Wallet → + → Debit Card → Enter details above</p>
                               </div>
                             )}
-                          </div>
-                        )}
-
-                        {groceryCards[b.id].status === "ACTIVE" && (
-                          <div className="flex gap-2 mt-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Amount spent"
-                              value={spendAmount[b.id] || ""}
-                              onChange={(e) => setSpendAmount(prev => ({ ...prev, [b.id]: e.target.value }))}
-                              className="border border-dark-border bg-dark px-3 py-2 text-sm text-cream w-32"
-                            />
-                            <button
-                              onClick={() => recordSpending(groceryCards[b.id].id, b.id)}
-                              className="bg-gold text-dark px-4 py-2 text-xs font-semibold hover:bg-gold-light transition-colors"
-                            >
-                              Record Spending
-                            </button>
                           </div>
                         )}
                       </div>

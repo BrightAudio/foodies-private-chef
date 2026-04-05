@@ -135,10 +135,14 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(cards);
 }
 
-// POST /api/grocery-cards — client issues a Stripe Issuing virtual card for a booking's chef
+// POST /api/grocery-cards — create a card (admin only, or via grocery-list fund flow)
+// Normal flow: chef creates grocery list → AI estimates → client approves → fund action creates card
 export async function POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Cards are created through the grocery list approval flow. Use /api/grocery-lists PATCH action=fund." }, { status: 403 });
+  }
 
   const body = await req.json();
   const { bookingId, budget, approvedItems } = body;
@@ -152,17 +156,9 @@ export async function POST(req: NextRequest) {
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    select: { clientId: true, chefProfileId: true, status: true },
+    select: { clientId: true, chefProfileId: true, status: true, address: true },
   });
   if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-  if (user.role !== "ADMIN" && booking.clientId !== user.userId) {
-    return NextResponse.json({ error: "Only the booking client or admin can issue a grocery card" }, { status: 403 });
-  }
-
-  const validStatuses = ["ACCEPTED", "CONFIRMED", "PREPARING"];
-  if (!validStatuses.includes(booking.status)) {
-    return NextResponse.json({ error: "Booking must be accepted/confirmed before issuing a grocery card" }, { status: 400 });
-  }
 
   const existing = await prisma.groceryCard.findFirst({
     where: { bookingId, status: { in: ["ACTIVE", "FROZEN"] } },
@@ -171,7 +167,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "An active grocery card already exists for this booking" }, { status: 409 });
   }
 
-  // Get chef profile with user info for cardholder creation
   const chefProfile = await prisma.chefProfile.findUnique({
     where: { id: booking.chefProfileId },
     include: { user: { select: { name: true, email: true, phone: true } } },
@@ -179,14 +174,14 @@ export async function POST(req: NextRequest) {
   if (!chefProfile) return NextResponse.json({ error: "Chef profile not found" }, { status: 404 });
 
   try {
-    // Ensure chef has a Stripe Issuing cardholder
     let cardholderId = chefProfile.stripeCardholderId;
     if (!cardholderId) {
+      const addressParts = (booking.address || "").split(",").map(s => s.trim());
       const cardholder = await createIssuingCardholder(
         chefProfile.user.name,
         chefProfile.user.email,
         chefProfile.user.phone,
-        { line1: "123 Platform St", city: "Lansing", state: "MI", postal_code: "48933", country: "US" }
+        { line1: addressParts[0] || "Platform Address", city: addressParts[1] || "Lansing", state: addressParts[2] || "MI", postal_code: "48933", country: "US" }
       );
       cardholderId = cardholder.id;
       await prisma.chefProfile.update({
@@ -195,7 +190,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create the virtual Stripe Issuing card
     const budgetCents = Math.round(parseFloat(String(budget)) * 100);
     const stripeCard = await createIssuingCard(cardholderId, budgetCents, {
       bookingId,
@@ -203,8 +197,7 @@ export async function POST(req: NextRequest) {
       platform: "foodies",
     });
 
-    const last4 = stripeCard.last4;
-    const cardNumber = `****-****-****-${last4}`;
+    const cardNumber = `****-****-****-${stripeCard.last4}`;
     const sanitizedItems = approvedItems ? sanitizeText(JSON.stringify(approvedItems)) : null;
 
     const card = await prisma.groceryCard.create({
@@ -214,6 +207,7 @@ export async function POST(req: NextRequest) {
         cardNumber,
         budget: parseFloat(String(budget)),
         approvedItems: sanitizedItems,
+        fundedFromChefPortion: true,
         stripeCardId: stripeCard.id,
         stripeCardholderId: cardholderId,
         expiresAt: new Date(stripeCard.exp_year, stripeCard.exp_month - 1),
@@ -224,7 +218,7 @@ export async function POST(req: NextRequest) {
       userId: chefProfile.userId,
       type: "GROCERY_CARD",
       title: "Grocery Card Issued",
-      body: `A Stripe virtual grocery card (${cardNumber}) with $${parseFloat(String(budget)).toFixed(2)} budget has been issued. Add it to Apple Pay from your dashboard!`,
+      body: `A virtual grocery card (${cardNumber}) with $${parseFloat(String(budget)).toFixed(2)} has been funded from your booking earnings.`,
       data: { link: "/chef/dashboard" },
     });
 

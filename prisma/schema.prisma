@@ -185,6 +185,7 @@ model ChefProfile {
   favoritedBy           FavoriteChef[]
   taggedInPosts         SocialPost[] @relation("TaggedChefPosts")
   groceryCards          GroceryCard[]
+  groceryLists          GroceryList[]
 
   @@index([userId])
   @@index([isApproved, isActive])
@@ -314,6 +315,7 @@ model Booking {
   dishRequests    DishRequest[]
   locationCheckins LocationCheckin[]
   groceryCards    GroceryCard[]
+  groceryLists    GroceryList[]
 
   @@index([clientId])
   @@index([chefProfileId])
@@ -675,12 +677,14 @@ model GroceryCard {
   booking         Booking     @relation(fields: [bookingId], references: [id])
   chefProfileId   String
   chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  groceryListId   String?     // Link to the approved grocery list
+  groceryList     GroceryList? @relation(fields: [groceryListId], references: [id])
   cardNumber      String      // Last 4 digits (masked display)
   budget          Float       // Client-approved budget
   spent           Float       @default(0)
   status          String      @default("ACTIVE") // ACTIVE | FROZEN | DEPLETED | CLOSED
   approvedItems   String?     // JSON array of approved grocery items
-  mailingAddress  String?     // Address to mail physical card
+  fundedFromChefPortion Boolean @default(true) // Deducted from chef's booking earnings
   issuedAt        DateTime    @default(now())
   expiresAt       DateTime?
   closedAt        DateTime?
@@ -688,6 +692,32 @@ model GroceryCard {
   // Stripe Issuing
   stripeCardId    String?     // Stripe Issuing card ID (ic_xxx)
   stripeCardholderId String?  // Stripe Issuing cardholder ID (ich_xxx)
+
+  @@index([bookingId])
+  @@index([chefProfileId])
+  @@index([status])
+}
+
+// Grocery list — chef creates, AI estimates pricing, client approves
+model GroceryList {
+  id              String      @id @default(uuid())
+  bookingId       String
+  booking         Booking     @relation(fields: [bookingId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  items           String      // JSON array: [{ name, quantity, unit, estimatedPrice }]
+  estimatedTotal  Float       // AI-estimated total cost
+  nearbyStores    String?     // JSON: stores used for estimation
+  aiModel         String?     // Which AI model did the estimate
+  clientApproved  Boolean     @default(false)
+  clientApprovedAt DateTime?
+  clientNote      String?     // Client can add a note when approving
+  status          String      @default("PENDING") // PENDING | APPROVED | REJECTED | FUNDED | EXPIRED
+  rejectedReason  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  groceryCards    GroceryCard[]
 
   @@index([bookingId])
   @@index([chefProfileId])

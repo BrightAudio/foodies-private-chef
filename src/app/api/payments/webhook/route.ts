@@ -200,6 +200,36 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    // Stripe Issuing — transaction created (grocery card spending)
+    case "issuing_transaction.created": {
+      const txn = event.data.object as {
+        amount: number;
+        card: string;
+        merchant_data?: { name?: string; category?: string };
+        metadata?: Record<string, string>;
+      };
+      // amount is in cents, negative for purchases
+      const spentCents = Math.abs(txn.amount);
+      const spentDollars = spentCents / 100;
+      const stripeCardId = txn.card;
+
+      if (stripeCardId) {
+        const card = await prisma.groceryCard.findFirst({
+          where: { stripeCardId },
+        });
+        if (card && card.status === "ACTIVE") {
+          const newSpent = card.spent + spentDollars;
+          const status = newSpent >= card.budget ? "DEPLETED" : "ACTIVE";
+          await prisma.groceryCard.update({
+            where: { id: card.id },
+            data: { spent: newSpent, status },
+          });
+          console.log(`Issuing txn: card=${card.id}, amount=$${spentDollars}, merchant=${txn.merchant_data?.name || "unknown"}, total_spent=$${newSpent.toFixed(2)}`);
+        }
+      }
+      break;
+    }
+
     default:
       // Unhandled event type
       // eslint-disable-next-line no-console

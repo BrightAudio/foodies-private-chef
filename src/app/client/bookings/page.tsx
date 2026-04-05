@@ -56,6 +56,17 @@ export default function ClientBookings() {
   const [incidentSeverity, setIncidentSeverity] = useState("MEDIUM");
   const [incidentDescription, setIncidentDescription] = useState("");
 
+  // Grocery list approval state
+  interface GroceryListItem { name: string; quantity: string; unit: string; estimatedPrice?: number }
+  interface GroceryListData {
+    id: string; bookingId: string; items: string; estimatedTotal: number;
+    nearbyStores: string | null; status: string; clientNote: string | null;
+    createdAt: string; chefProfile?: { user: { name: string } };
+  }
+  const [groceryLists, setGroceryLists] = useState<Record<string, GroceryListData>>({});
+  const [approvalNote, setApprovalNote] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+
   // Dish request state
   interface DishReq {
     id: string;
@@ -216,7 +227,60 @@ export default function ClientBookings() {
     } finally { setSubmitting(false); }
   };
 
+  // Grocery list functions
+  const fetchGroceryList = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/grocery-lists?bookingId=${bookingId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const lists = await res.json();
+        if (lists.length > 0) setGroceryLists(prev => ({ ...prev, [bookingId]: lists[0] }));
+      }
+    } catch {}
+  };
 
+  const approveGroceryList = async (listId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/grocery-lists", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ listId, action: "approve", clientNote: approvalNote.trim() || undefined }),
+      });
+      if (res.ok) {
+        toast.success("Grocery list approved! A virtual card will be funded from the chef's booking earnings.");
+        setApprovalNote("");
+        fetchGroceryList(bookingId);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to approve");
+      }
+    } finally { setSubmitting(false); }
+  };
+
+  const rejectGroceryList = async (listId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/grocery-lists", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ listId, action: "reject", rejectedReason: rejectionReason.trim() || undefined }),
+      });
+      if (res.ok) {
+        toast.success("Grocery list declined.");
+        setRejectionReason("");
+        fetchGroceryList(bookingId);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to reject");
+      }
+    } finally { setSubmitting(false); }
+  };
 
   const statusColors: Record<string, string> = {
     PENDING: "bg-gold/10 text-gold",
@@ -434,6 +498,63 @@ export default function ClientBookings() {
                     </button>
                   )}
                 </div>
+
+                {/* Grocery List Approval Section */}
+                {["ACCEPTED", "CONFIRMED", "PREPARING"].includes(b.status) && (
+                  <div className="mt-4 border-t border-dark-border pt-4">
+                    {!groceryLists[b.id] ? (
+                      <button onClick={() => fetchGroceryList(b.id)} className="text-sm text-cream-muted hover:text-cream transition-colors">
+                        🛒 Check Grocery Requests
+                      </button>
+                    ) : groceryLists[b.id].status === "PENDING" ? (
+                      <div className="bg-dark border border-gold/20 p-5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-gold">📋 Grocery List — Approval Needed</h4>
+                          <span className="text-[10px] font-bold px-2 py-0.5 text-amber-400 bg-amber-500/10">PENDING</span>
+                        </div>
+                        <p className="text-xs text-cream-muted">Your chef submitted a grocery list. The estimated cost will come from the chef&apos;s booking earnings — <strong className="text-cream">no extra charge to you</strong>.</p>
+                        <div className="text-xs text-cream-muted space-y-1">
+                          {(() => { try { const items = JSON.parse(groceryLists[b.id].items) as GroceryListItem[]; return items.map((item: GroceryListItem, i: number) => (
+                            <div key={i} className="flex justify-between"><span>{item.quantity} {item.unit} {item.name}</span><span className="text-gold">${(item.estimatedPrice || 0).toFixed(2)}</span></div>
+                          )); } catch { return null; } })()}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm border-t border-dark-border pt-2">
+                          <span>Estimated Total: <strong className="text-gold">${groceryLists[b.id].estimatedTotal.toFixed(2)}</strong></span>
+                          {groceryLists[b.id].nearbyStores && (
+                            <span className="text-xs text-cream-muted">Based on: {(() => { try { return JSON.parse(groceryLists[b.id].nearbyStores!).join(", "); } catch { return groceryLists[b.id].nearbyStores; } })()}</span>
+                          )}
+                        </div>
+                        <div>
+                          <input type="text" placeholder="Add a note (optional)" value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} className="w-full border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                        </div>
+                        <div className="flex gap-3">
+                          <button onClick={() => approveGroceryList(groceryLists[b.id].id, b.id)} disabled={submitting} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">
+                            {submitting ? "Approving..." : "✅ Approve"}
+                          </button>
+                          <div className="flex-1 flex gap-2">
+                            <input type="text" placeholder="Reason for declining (optional)" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} className="flex-1 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                            <button onClick={() => rejectGroceryList(groceryLists[b.id].id, b.id)} disabled={submitting} className="text-red-400 px-4 py-2 text-sm font-medium hover:text-red-300 border border-red-500/20 transition-colors disabled:opacity-40">
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-dark border border-dark-border p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-cream-muted">📋 Grocery List</h4>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                            groceryLists[b.id].status === "APPROVED" ? "text-emerald-400 bg-emerald-500/10" :
+                            groceryLists[b.id].status === "FUNDED" ? "text-gold bg-gold/10" :
+                            groceryLists[b.id].status === "REJECTED" ? "text-red-400 bg-red-500/10" :
+                            "text-cream-muted bg-dark-border"
+                          }`}>{groceryLists[b.id].status}</span>
+                        </div>
+                        <p className="text-xs text-cream-muted">Estimated: <strong className="text-gold">${groceryLists[b.id].estimatedTotal.toFixed(2)}</strong> — funded from chef&apos;s earnings</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Incident Report Form */}
                 {reportingId === b.id && (
