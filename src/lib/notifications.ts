@@ -11,7 +11,8 @@ type NotificationType =
   | "MESSAGE"
   | "TIP"
   | "BG_CHECK_UPDATE"
-  | "EXPIRY_WARNING";
+  | "EXPIRY_WARNING"
+  | "GROCERY_CARD";
 
 interface CreateNotification {
   userId: string;

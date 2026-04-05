@@ -171,7 +171,7 @@ const roleColors: Record<string, string> = {
   ADMIN: "text-purple-400 bg-purple-500/10",
 };
 
-type Tab = "chefs" | "users" | "bookings" | "trucks" | "analytics" | "audit" | "alerts" | "incidents";
+type Tab = "chefs" | "users" | "bookings" | "trucks" | "analytics" | "audit" | "alerts" | "incidents" | "support";
 
 interface AnalyticsData {
   overview: { totalUsers: number; totalChefs: number; approvedChefs: number; totalBookings: number; completedBookings: number; cancelledBookings: number; completionRate: number; recentUsers: number; pendingVerifications: number };
@@ -241,6 +241,11 @@ export default function AdminDashboard() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
   const [incidentNotes, setIncidentNotes] = useState("");
+  // Support chat state
+  interface SupportChat { id: string; userId: string; subject: string; status: string; createdAt: string; user: { name: string; role: string }; admin: { name: string } | null; messages: { id: string; senderId: string; content: string; createdAt: string }[] }
+  const [supportChats, setSupportChats] = useState<SupportChat[]>([]);
+  const [activeSupportChat, setActiveSupportChat] = useState<SupportChat | null>(null);
+  const [supportReply, setSupportReply] = useState("");
   const [locationEvidence, setLocationEvidence] = useState<{ checkins: { latitude: number; longitude: number; accuracy: number | null; checkinType: string; createdAt: string }[]; summary: { totalCheckins: number; firstCheckin: string; lastCheckin: string; durationMinutes: number; arrivalRecorded: boolean; departureRecorded: boolean } | null } | null>(null);
   const [locationBookingId, setLocationBookingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -350,6 +355,7 @@ export default function AdminDashboard() {
     if (tab === "audit") fetchAuditLogs();
     if (tab === "alerts") fetchExpiryAlerts();
     if (tab === "incidents") fetchIncidents();
+    if (tab === "support") fetchSupportChats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -386,6 +392,49 @@ export default function AdminDashboard() {
         setLocationBookingId(bookingId);
       }
     } catch { /* ignore */ }
+  };
+
+  const fetchSupportChats = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin-chat", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setSupportChats(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const loadSupportChat = async (chatId: string) => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/admin-chat?chatId=${chatId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setActiveSupportChat(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const sendSupportReply = async () => {
+    if (!activeSupportChat || !supportReply.trim()) return;
+    const token = getToken();
+    if (!token) return;
+    await fetch("/api/admin-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ chatId: activeSupportChat.id, content: supportReply.trim() }),
+    });
+    setSupportReply("");
+    loadSupportChat(activeSupportChat.id);
+  };
+
+  const updateSupportChat = async (chatId: string, action: string) => {
+    const token = getToken();
+    if (!token) return;
+    await fetch("/api/admin-chat", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ chatId, action }),
+    });
+    fetchSupportChats();
+    if (activeSupportChat?.id === chatId) loadSupportChat(chatId);
   };
 
   const updateChef = async (id: string, data: { isApproved?: boolean; isActive?: boolean; bgCheckStatus?: string; tier?: string; verificationStatus?: string; idVerificationStatus?: string; insuranceVerified?: boolean; insuranceStatus?: string; activationStatus?: string }) => {
@@ -464,6 +513,7 @@ export default function AdminDashboard() {
             { key: "audit" as Tab, label: "Audit Log", badge: null },
             { key: "incidents" as Tab, label: "Incidents", badge: incidents.filter(i => i.status === "OPEN").length > 0 ? incidents.filter(i => i.status === "OPEN").length : null },
             { key: "alerts" as Tab, label: "Alerts", badge: expiryAlerts.length > 0 ? expiryAlerts.length : null },
+            { key: "support" as Tab, label: "Support", badge: supportChats.filter(c => c.status === "OPEN").length > 0 ? supportChats.filter(c => c.status === "OPEN").length : null },
           ]).map((t) => (
             <button
               key={t.key}
@@ -1579,6 +1629,110 @@ export default function AdminDashboard() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {!loading && tab === "support" && (
+          /* ========== SUPPORT CHAT TAB ========== */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold tracking-wider uppercase text-cream-muted">
+                Support Chats ({supportChats.filter(c => c.status === "OPEN" || c.status === "ASSIGNED").length} active)
+              </h3>
+              {supportChats.length === 0 ? (
+                <p className="text-cream-muted text-sm">No support chats.</p>
+              ) : (
+                supportChats.map((chat) => (
+                  <button
+                    key={chat.id}
+                    onClick={() => loadSupportChat(chat.id)}
+                    className={`w-full text-left p-4 border transition-colors ${
+                      activeSupportChat?.id === chat.id ? "border-gold/50 bg-gold/5" : "border-dark-border bg-dark-card hover:border-gold/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium truncate">{chat.subject}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                        chat.status === "OPEN" ? "text-gold bg-gold/10" :
+                        chat.status === "ASSIGNED" ? "text-blue-400 bg-blue-500/10" :
+                        chat.status === "RESOLVED" ? "text-emerald-400 bg-emerald-500/10" :
+                        "text-cream-muted bg-dark-border"
+                      }`}>{chat.status}</span>
+                    </div>
+                    <p className="text-xs text-cream-muted">{chat.user.name} ({chat.user.role})</p>
+                    {chat.messages[0] && <p className="text-xs text-cream-muted/60 truncate mt-1">{chat.messages[0].content}</p>}
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="md:col-span-2">
+              {activeSupportChat ? (
+                <div className="bg-dark-card border border-dark-border">
+                  <div className="p-4 border-b border-dark-border flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">{activeSupportChat.subject}</h3>
+                      <p className="text-xs text-cream-muted">
+                        {activeSupportChat.user.name} ({activeSupportChat.user.role}) · {activeSupportChat.status}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {activeSupportChat.status === "OPEN" && (
+                        <button onClick={() => updateSupportChat(activeSupportChat.id, "assign")} className="bg-blue-600 text-white px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 transition-colors">
+                          Assign to Me
+                        </button>
+                      )}
+                      {(activeSupportChat.status === "OPEN" || activeSupportChat.status === "ASSIGNED") && (
+                        <button onClick={() => updateSupportChat(activeSupportChat.id, "resolve")} className="bg-emerald-600 text-white px-3 py-1.5 text-xs font-semibold hover:bg-emerald-500 transition-colors">
+                          Resolve
+                        </button>
+                      )}
+                      {activeSupportChat.status !== "CLOSED" && (
+                        <button onClick={() => updateSupportChat(activeSupportChat.id, "close")} className="text-cream-muted text-xs hover:text-cream transition-colors">
+                          Close
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+                    {activeSupportChat.messages.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.senderId === activeSupportChat.userId ? "justify-start" : "justify-end"}`}>
+                        <div className={`max-w-[80%] px-4 py-3 ${
+                          msg.senderId === activeSupportChat.userId ? "bg-dark border border-dark-border" : "bg-gold/10 border border-gold/20"
+                        }`}>
+                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-[10px] text-cream-muted/50 mt-1">{new Date(msg.createdAt).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {activeSupportChat.status !== "CLOSED" && (
+                    <div className="p-4 border-t border-dark-border flex gap-2">
+                      <input
+                        type="text"
+                        value={supportReply}
+                        onChange={(e) => setSupportReply(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && sendSupportReply()}
+                        placeholder="Type a reply..."
+                        className="flex-1 border border-dark-border bg-dark px-4 py-3 text-cream text-sm"
+                      />
+                      <button
+                        onClick={sendSupportReply}
+                        disabled={!supportReply.trim()}
+                        className="bg-gold text-dark px-5 py-3 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-dark-card border border-dark-border">
+                  <p className="text-4xl mb-3">💬</p>
+                  <p className="text-cream-muted">Select a chat to respond.</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

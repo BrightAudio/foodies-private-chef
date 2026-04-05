@@ -56,6 +56,8 @@ model User {
   socialPosts       SocialPost[]
   postComments      PostComment[]
   postLikes         PostLike[]
+  adminChatsAsUser  AdminChat[] @relation("AdminChatUser")
+  adminChatsAsAdmin AdminChat[] @relation("AdminChatAdmin")
 
   @@index([email])
   @@index([role])
@@ -153,9 +155,17 @@ model ChefProfile {
   antiPoachingAcceptedAt DateTime?
   chefNonCompeteAt      DateTime? // When chef signed non-compete clause
 
+  // Decline tracking
+  declineCount          Int       @default(0)  // Total booking declines
+  declineWarnings       Int       @default(0)  // Warnings issued for excessive declines
+  lastDeclineAt         DateTime?
+
   // Stripe Connect (payouts)
   stripeConnectAccountId String?    // Stripe Connect account ID for payouts
   stripeConnectOnboarded Boolean @default(false)
+
+  // Stripe Issuing (grocery cards)
+  stripeCardholderId    String?    // Stripe Issuing cardholder ID
 
   // External BG check integration (Checkr)
   bgCheckExternalId     String?    // Checkr candidate ID
@@ -174,6 +184,7 @@ model ChefProfile {
   availability          ChefAvailability[]
   favoritedBy           FavoriteChef[]
   taggedInPosts         SocialPost[] @relation("TaggedChefPosts")
+  groceryCards          GroceryCard[]
 
   @@index([userId])
   @@index([isApproved, isActive])
@@ -254,8 +265,17 @@ model Booking {
   generalArea     String?   // e.g. "Downtown Lansing" — shown before address reveal
 
   // Job tracking
-  jobStatus       String    @default("SCHEDULED") // SCHEDULED | EN_ROUTE | ARRIVED | IN_PROGRESS | COMPLETED
+  jobStatus       String    @default("SCHEDULED") // SCHEDULED | PREPARING | EN_ROUTE | ARRIVED | IN_PROGRESS | COMPLETED
   addressRevealedAt DateTime?
+
+  // Accept/Decline
+  declinedAt        DateTime?
+  declineReason     String?
+
+  // Chef live location (updated while en route)
+  chefLatitude      Float?
+  chefLongitude     Float?
+  chefLocationUpdatedAt DateTime?
 
   // Pricing
   subtotal        Float       // What the chef charges
@@ -277,7 +297,7 @@ model Booking {
   cancellationFee       Float?     // Actual fee charged
   refundAmount          Float?     // Amount refunded to client
 
-  status          String      @default("PENDING") // PENDING | CONFIRMED | PENDING_COMPLETION | COMPLETED | CANCELLED
+  status          String      @default("PENDING") // PENDING | ACCEPTED | DECLINED | CONFIRMED | PREPARING | PENDING_COMPLETION | COMPLETED | CANCELLED
 
   // Client completion confirmation
   chefCompletedAt     DateTime?  // When chef marked complete
@@ -293,6 +313,7 @@ model Booking {
   tip             Tip?
   dishRequests    DishRequest[]
   locationCheckins LocationCheckin[]
+  groceryCards    GroceryCard[]
 
   @@index([clientId])
   @@index([chefProfileId])
@@ -616,4 +637,59 @@ model LocationCheckin {
   @@index([bookingId])
   @@index([userId])
   @@index([bookingId, createdAt])
+}
+
+// Admin chat — clients and chefs can chat with admin support
+model AdminChat {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("AdminChatUser", fields: [userId], references: [id])
+  adminId     String?  // Assigned admin (null = unassigned)
+  admin       User?    @relation("AdminChatAdmin", fields: [adminId], references: [id])
+  subject     String
+  status      String   @default("OPEN") // OPEN | ASSIGNED | RESOLVED | CLOSED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  messages    AdminChatMessage[]
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([status])
+}
+
+model AdminChatMessage {
+  id          String    @id @default(uuid())
+  chatId      String
+  chat        AdminChat @relation(fields: [chatId], references: [id])
+  senderId    String    // userId of sender (user or admin)
+  content     String
+  createdAt   DateTime  @default(now())
+
+  @@index([chatId])
+}
+
+// Grocery card — virtual prepaid card for chef grocery shopping
+model GroceryCard {
+  id              String      @id @default(uuid())
+  bookingId       String
+  booking         Booking     @relation(fields: [bookingId], references: [id])
+  chefProfileId   String
+  chefProfile     ChefProfile @relation(fields: [chefProfileId], references: [id])
+  cardNumber      String      // Last 4 digits (masked display)
+  budget          Float       // Client-approved budget
+  spent           Float       @default(0)
+  status          String      @default("ACTIVE") // ACTIVE | FROZEN | DEPLETED | CLOSED
+  approvedItems   String?     // JSON array of approved grocery items
+  mailingAddress  String?     // Address to mail physical card
+  issuedAt        DateTime    @default(now())
+  expiresAt       DateTime?
+  closedAt        DateTime?
+
+  // Stripe Issuing
+  stripeCardId    String?     // Stripe Issuing card ID (ic_xxx)
+  stripeCardholderId String?  // Stripe Issuing cardholder ID (ich_xxx)
+
+  @@index([bookingId])
+  @@index([chefProfileId])
+  @@index([status])
 }

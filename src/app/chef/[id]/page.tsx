@@ -118,6 +118,19 @@ export default function ChefProfilePage() {
     setSubmitting(true);
     setError("");
 
+    // Client-side 4-hour headway validation
+    if (booking.date && booking.time) {
+      const dt = new Date(booking.date);
+      const [h, m] = booking.time.split(":").map(Number);
+      if (!isNaN(h)) dt.setHours(h, m || 0, 0, 0);
+      const hoursUntil = (dt.getTime() - Date.now()) / (1000 * 60 * 60);
+      if (hoursUntil < 4) {
+        setError("Bookings must be made at least 4 hours in advance.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const payload = {
       chefProfileId: id,
       ...booking,

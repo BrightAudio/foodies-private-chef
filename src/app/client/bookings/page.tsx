@@ -24,6 +24,11 @@ interface Booking {
   addressRevealedAt: string | null;
   paymentStatus: string;
   chefProfileId: string;
+  chefLatitude: number | null;
+  chefLongitude: number | null;
+  chefLocationUpdatedAt: string | null;
+  declinedAt: string | null;
+  declineReason: string | null;
   chefProfile: {
     id: string;
     specialtyDish: string;
@@ -66,6 +71,17 @@ export default function ClientBookings() {
   const [page, setPage] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
   const LIMIT = 20;
+
+  // Poll for live chef location when any booking is EN_ROUTE
+  useEffect(() => {
+    const hasEnRoute = bookings.some((b) => b.jobStatus === "EN_ROUTE");
+    if (!hasEnRoute) return;
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchBookings();
+    }, 15_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings]);
 
   useEffect(() => {
     if (!localStorage.getItem("token")) { window.location.href = "/login"; return; }
@@ -200,16 +216,21 @@ export default function ClientBookings() {
     } finally { setSubmitting(false); }
   };
 
+
+
   const statusColors: Record<string, string> = {
     PENDING: "bg-gold/10 text-gold",
     CONFIRMED: "bg-blue-500/10 text-blue-400",
+    PREPARING: "bg-purple-500/10 text-purple-400",
     PENDING_COMPLETION: "bg-amber-500/10 text-amber-400",
     COMPLETED: "bg-emerald-500/10 text-emerald-400",
+    DECLINED: "bg-red-500/10 text-red-400",
     CANCELLED: "bg-red-500/10 text-red-400",
   };
 
   const jobStatusMessages: Record<string, string> = {
     SCHEDULED: "Your chef will be on their way soon",
+    PREPARING: "🍳 Your chef is preparing your meal",
     EN_ROUTE: "🚗 Your chef is on the way!",
     ARRIVED: "✅ Your chef has arrived",
     IN_PROGRESS: "🍳 Your chef is cooking",
@@ -290,6 +311,37 @@ export default function ClientBookings() {
                       <p className="text-sm font-semibold mt-1 text-gold">
                         {jobStatusMessages[b.jobStatus] || b.jobStatus}
                       </p>
+                    )}
+                    {b.status === "PREPARING" && (
+                      <p className="text-sm font-semibold mt-1 text-purple-400">
+                        {jobStatusMessages[b.jobStatus] || "🍳 Your chef is preparing"}
+                      </p>
+                    )}
+                    {/* Chef live location when en route */}
+                    {b.jobStatus === "EN_ROUTE" && b.chefLatitude && b.chefLongitude && (
+                      <div className="mt-2 bg-blue-500/10 border border-blue-500/20 p-3">
+                        <p className="text-xs text-blue-400 font-medium mb-1">📍 Chef&apos;s Live Location</p>
+                        <a
+                          href={`https://maps.google.com/?q=${b.chefLatitude},${b.chefLongitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-300 underline hover:text-blue-200 transition-colors"
+                        >
+                          View on Map →
+                        </a>
+                        {b.chefLocationUpdatedAt && (
+                          <p className="text-[10px] text-cream-muted/50 mt-1">
+                            Updated {new Date(b.chefLocationUpdatedAt).toLocaleTimeString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {/* Declined booking */}
+                    {b.status === "DECLINED" && (
+                      <div className="mt-1">
+                        <p className="text-sm text-red-400 font-medium">Chef declined this booking</p>
+                        {b.declineReason && <p className="text-xs text-cream-muted/60 mt-0.5">Reason: {b.declineReason}</p>}
+                      </div>
                     )}
                   </div>
                   <div className="text-right">

@@ -91,6 +91,15 @@ async function _POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required booking fields" }, { status: 400 });
   }
 
+  // 4-hour minimum booking headway — events must be at least 4 hours in the future
+  const bookingDateTime = new Date(date);
+  const [bHours, bMinutes] = time.split(":").map(Number);
+  if (!isNaN(bHours)) bookingDateTime.setHours(bHours, bMinutes || 0, 0, 0);
+  const hoursUntilBooking = (bookingDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+  if (hoursUntilBooking < 4) {
+    return NextResponse.json({ error: "Bookings must be made at least 4 hours in advance" }, { status: 400 });
+  }
+
   // Get chef to verify exists and is active
   const chef = await prisma.chefProfile.findUnique({ where: { id: chefProfileId } });
   if (!chef || !chef.isApproved || !chef.isActive) {

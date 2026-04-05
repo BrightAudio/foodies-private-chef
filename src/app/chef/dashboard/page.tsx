@@ -40,6 +40,10 @@ interface Booking {
   jobStatus: string;
   addressRevealedAt: string | null;
   paymentStatus: string;
+  chefLatitude: number | null;
+  chefLongitude: number | null;
+  declinedAt: string | null;
+  declineReason: string | null;
   client: { name: string; email: string; phone: string | null };
   items: { name: string; price: number; quantity: number }[];
   review: { rating: number; comment: string | null } | null;
@@ -151,6 +155,10 @@ export default function ChefDashboard() {
   const [signingTerms, setSigningTerms] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
   const [boostLoading, setBoostLoading] = useState(false);
+  const [groceryCards, setGroceryCards] = useState<Record<string, { id: string; cardNumber: string; budget: number; spent: number; status: string; approvedItems: string | null; stripeCardId: string | null }>>({});
+  const [spendAmount, setSpendAmount] = useState<Record<string, string>>({});
+  const [cardDetails, setCardDetails] = useState<Record<string, { number: string; exp_month: number; exp_year: number; cvc: string } | null>>({});
+  const [cardDetailsLoading, setCardDetailsLoading] = useState<Record<string, boolean>>({});
 
   // Fetch earnings report when tab opens
   useEffect(() => {
@@ -323,7 +331,7 @@ export default function ChefDashboard() {
     const data = await res.json();
     let results = data.bookings || data;
     if (filter === "active") {
-      results = results.filter((b: Booking) => b.status === "CONFIRMED" || b.status === "PENDING_COMPLETION");
+      results = results.filter((b: Booking) => b.status === "CONFIRMED" || b.status === "PREPARING" || b.status === "PENDING_COMPLETION");
     }
     setBookings(results);
     setLoading(false);
@@ -544,23 +552,32 @@ export default function ChefDashboard() {
   // Silent periodic location tracking for active jobs
   useEffect(() => {
     const activeBooking = bookings.find((b) =>
-      b.status === "CONFIRMED" && ["EN_ROUTE", "ARRIVED", "IN_PROGRESS"].includes(b.jobStatus)
+      (b.status === "CONFIRMED" || b.status === "PREPARING") && ["EN_ROUTE", "ARRIVED", "IN_PROGRESS"].includes(b.jobStatus)
     );
     if (!activeBooking || !navigator.geolocation) return;
 
     const token = localStorage.getItem("token");
     const sendLocation = () => {
       navigator.geolocation.getCurrentPosition((pos) => {
+        // Silent check-in for dispute resolution
         fetch(`/api/bookings/${activeBooking.id}/location`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy, checkinType: "PERIODIC" }),
         }).catch(() => {});
+        // Live location update for client tracking (when en route)
+        if (activeBooking.jobStatus === "EN_ROUTE") {
+          fetch(`/api/bookings/${activeBooking.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ chefLatitude: pos.coords.latitude, chefLongitude: pos.coords.longitude }),
+          }).catch(() => {});
+        }
       }, () => {}, { enableHighAccuracy: true });
     };
 
     sendLocation(); // immediate
-    const interval = setInterval(sendLocation, 5 * 60 * 1000); // every 5 min
+    const interval = setInterval(sendLocation, 30_000); // every 30s for live tracking
     return () => clearInterval(interval);
   }, [bookings]);
 
@@ -569,17 +586,112 @@ export default function ChefDashboard() {
     window.open(`https://maps.apple.com/?daddr=${encoded}`, "_blank");
   };
 
+  const [decliningId, setDecliningId] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+
+  const acceptBooking = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/bookings/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status: "ACCEPTED" }),
+    });
+    if (res.ok) {
+      toast.success("Booking accepted!");
+      fetchBookings();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to accept");
+    }
+  };
+
+  const declineBooking = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/bookings/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status: "DECLINED", declineReason: declineReason.trim() || undefined }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setDecliningId(null);
+      setDeclineReason("");
+      if (data.warningLevel) {
+        toast.error(`Warning: ${data.warningLevel} — excessive declines may lead to account restrictions.`);
+      } else {
+        toast("Booking declined.");
+      }
+      fetchBookings();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to decline");
+    }
+  };
+
+  const fetchGroceryCard = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/grocery-cards?bookingId=${bookingId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const cards = await res.json();
+        if (cards.length > 0) {
+          setGroceryCards(prev => ({ ...prev, [bookingId]: cards[0] }));
+        }
+      }
+    } catch {}
+  };
+
+  const recordSpending = async (cardId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    const amt = parseFloat(spendAmount[bookingId] || "0");
+    if (!token || !amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    const res = await fetch("/api/grocery-cards", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ cardId, action: "spend", amount: amt }),
+    });
+    if (res.ok) {
+      toast("Spending recorded!");
+      setSpendAmount(prev => ({ ...prev, [bookingId]: "" }));
+      fetchGroceryCard(bookingId);
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to record spending");
+    }
+  };
+
+  const viewCardDetails = async (cardDbId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setCardDetailsLoading(prev => ({ ...prev, [bookingId]: true }));
+    try {
+      const res = await fetch(`/api/grocery-cards?cardId=${cardDbId}&action=details`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const details = await res.json();
+        setCardDetails(prev => ({ ...prev, [bookingId]: details }));
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to load card details");
+      }
+    } catch { toast.error("Network error"); }
+    finally { setCardDetailsLoading(prev => ({ ...prev, [bookingId]: false })); }
+  };
+
   const statusColors: Record<string, string> = {
     PENDING: "bg-gold/10 text-gold",
     CONFIRMED: "bg-blue-500/10 text-blue-400",
+    PREPARING: "bg-purple-500/10 text-purple-400",
     PENDING_COMPLETION: "bg-amber-500/10 text-amber-400",
     COMPLETED: "bg-emerald-500/10 text-emerald-400",
+    DECLINED: "bg-red-500/10 text-red-400",
     CANCELLED: "bg-red-500/10 text-red-400",
   };
 
   const jobStatusLabels: Record<string, string> = {
     SCHEDULED: "Scheduled",
-    EN_ROUTE: "On the Way",
+    PREPARING: "Preparing",
+    EN_ROUTE: "En Route",
     ARRIVED: "Arrived",
     IN_PROGRESS: "In Progress",
     COMPLETED: "Job Complete",
@@ -587,6 +699,7 @@ export default function ChefDashboard() {
 
   const jobStatusColors: Record<string, string> = {
     SCHEDULED: "bg-dark-border text-cream-muted",
+    PREPARING: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
     EN_ROUTE: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
     ARRIVED: "bg-gold/10 text-gold border border-gold/20",
     IN_PROGRESS: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
@@ -725,7 +838,7 @@ export default function ChefDashboard() {
           <button onClick={() => { setDashTab("bookings"); setFilter("active"); }} className="bg-dark-card border border-dark-border p-6 text-left hover:border-blue-500/30 transition-colors">
             <p className="text-xs font-medium tracking-wider uppercase text-cream-muted">Active Jobs</p>
             <p className="text-3xl font-bold text-blue-400 mt-1">
-              {bookings.filter((b) => b.status === "CONFIRMED" || b.status === "PENDING_COMPLETION").length}
+              {bookings.filter((b) => b.status === "CONFIRMED" || b.status === "PREPARING" || b.status === "PENDING_COMPLETION").length}
             </p>
           </button>
           <button onClick={() => { setDashTab("bookings"); setFilter("PENDING"); }} className="bg-dark-card border border-dark-border p-6 text-left hover:border-gold/30 transition-colors">
@@ -1073,7 +1186,7 @@ export default function ChefDashboard() {
           <>
         {/* Filter */}
         <div className="flex gap-2 mb-6">
-          {["", "active", "PENDING", "CONFIRMED", "PENDING_COMPLETION", "COMPLETED", "CANCELLED"].map((s) => (
+          {["", "active", "PENDING", "CONFIRMED", "PREPARING", "PENDING_COMPLETION", "COMPLETED", "DECLINED", "CANCELLED"].map((s) => (
             <button
               key={s}
               onClick={() => setFilter(s)}
@@ -1151,32 +1264,79 @@ export default function ChefDashboard() {
 
                 {/* Action buttons */}
                 <div className="flex gap-2 flex-wrap items-center">
+                  {/* Accept / Decline for pending bookings */}
                   {b.status === "PENDING" && (
+                    <div className="flex gap-2 items-center">
+                      <button
+                        onClick={() => acceptBooking(b.id)}
+                        className="bg-emerald-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-emerald-500 transition-colors"
+                      >
+                        ✓ Accept Booking
+                      </button>
+                      <button
+                        onClick={() => setDecliningId(b.id)}
+                        className="bg-red-500/10 text-red-400 px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-red-500/20 transition-colors border border-red-500/20"
+                      >
+                        ✗ Decline
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Decline reason modal */}
+                  {decliningId === b.id && (
+                    <div className="w-full mt-3 bg-dark border border-red-500/20 p-4 space-y-3">
+                      <p className="text-sm text-red-400 font-medium">Why are you declining this booking?</p>
+                      <textarea
+                        value={declineReason}
+                        onChange={(e) => setDeclineReason(e.target.value)}
+                        placeholder="Optional reason (visible to client)..."
+                        className="w-full border border-dark-border bg-dark-card px-4 py-3 h-20 text-cream text-sm"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => declineBooking(b.id)}
+                          className="bg-red-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-red-500 transition-colors"
+                        >
+                          Confirm Decline
+                        </button>
+                        <button
+                          onClick={() => { setDecliningId(null); setDeclineReason(""); }}
+                          className="text-cream-muted text-sm hover:text-cream transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preparing step (after confirmed, before en route) */}
+                  {b.status === "CONFIRMED" && b.jobStatus === "SCHEDULED" && (
                     <button
-                      onClick={() => updateStatus(b.id, "CONFIRMED")}
-                      className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
+                      onClick={() => updateJobStatus(b.id, "PREPARING")}
+                      className="bg-purple-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-purple-500 transition-colors"
                     >
-                      Confirm Booking
+                      🍳 Start Preparing
                     </button>
                   )}
 
-                  {b.status === "CONFIRMED" && b.jobStatus === "SCHEDULED" && (
+                  {/* En Route step */}
+                  {(b.status === "CONFIRMED" || b.status === "PREPARING") && b.jobStatus === "PREPARING" && (
                     <button
                       onClick={() => updateJobStatus(b.id, "EN_ROUTE")}
                       className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors"
                     >
-                      🚗 Start Job — On the Way
+                      🚗 Mark En Route
                     </button>
                   )}
 
-                  {b.status === "CONFIRMED" && b.jobStatus === "EN_ROUTE" && (
+                  {(b.status === "CONFIRMED" || b.status === "PREPARING") && b.jobStatus === "EN_ROUTE" && (
                     <>
                       {b.address && b.addressRevealedAt && (
                         <button
                           onClick={() => openInMaps(b.address)}
                           className="bg-blue-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-blue-500 transition-colors"
                         >
-                          📍 Open in Maps
+                          📍 Navigate to Client
                         </button>
                       )}
                       <button
@@ -1188,7 +1348,7 @@ export default function ChefDashboard() {
                     </>
                   )}
 
-                  {b.status === "CONFIRMED" && b.jobStatus === "ARRIVED" && (
+                  {(b.status === "CONFIRMED" || b.status === "PREPARING") && b.jobStatus === "ARRIVED" && (
                     <button
                       onClick={() => updateJobStatus(b.id, "IN_PROGRESS")}
                       className="bg-purple-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-purple-500 transition-colors"
@@ -1197,7 +1357,7 @@ export default function ChefDashboard() {
                     </button>
                   )}
 
-                  {b.status === "CONFIRMED" && b.jobStatus === "IN_PROGRESS" && (
+                  {(b.status === "CONFIRMED" || b.status === "PREPARING") && b.jobStatus === "IN_PROGRESS" && (
                     <button
                       onClick={() => { updateJobStatus(b.id, "COMPLETED"); updateStatus(b.id, "PENDING_COMPLETION"); }}
                       className="bg-emerald-600 text-white px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-emerald-500 transition-colors"
@@ -1210,6 +1370,10 @@ export default function ChefDashboard() {
                     <span className="text-amber-400 text-sm font-medium">⏳ Awaiting client confirmation...</span>
                   )}
 
+                  {b.status === "DECLINED" && (
+                    <span className="text-red-400 text-sm font-medium">Declined{b.declineReason ? `: ${b.declineReason}` : ""}</span>
+                  )}
+
                   {b.status !== "CANCELLED" && b.status !== "COMPLETED" && b.status !== "PENDING_COMPLETION" && (
                     <a
                       href={`/messages/${b.id}`}
@@ -1219,6 +1383,88 @@ export default function ChefDashboard() {
                     </a>
                   )}
                 </div>
+
+                {/* Grocery Card Section */}
+                {["CONFIRMED", "PREPARING"].includes(b.status) && (
+                  <div className="mt-4 border-t border-dark-border pt-4">
+                    {!groceryCards[b.id] ? (
+                      <button onClick={() => fetchGroceryCard(b.id)} className="text-sm text-gold hover:text-gold-light transition-colors">
+                        🛒 Check Grocery Card
+                      </button>
+                    ) : (
+                      <div className="bg-dark border border-dark-border p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-gold">💳 Stripe Virtual Grocery Card</h4>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 ${
+                            groceryCards[b.id].status === "ACTIVE" ? "text-emerald-400 bg-emerald-500/10" :
+                            groceryCards[b.id].status === "FROZEN" ? "text-blue-400 bg-blue-500/10" :
+                            groceryCards[b.id].status === "DEPLETED" ? "text-amber-400 bg-amber-500/10" :
+                            "text-cream-muted bg-dark-border"
+                          }`}>{groceryCards[b.id].status}</span>
+                        </div>
+                        <p className="text-xs text-cream-muted">Card: {groceryCards[b.id].cardNumber}</p>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span>Budget: <strong className="text-gold">${groceryCards[b.id].budget.toFixed(2)}</strong></span>
+                          <span>Spent: <strong>${groceryCards[b.id].spent.toFixed(2)}</strong></span>
+                          <span>Remaining: <strong className="text-emerald-400">${(groceryCards[b.id].budget - groceryCards[b.id].spent).toFixed(2)}</strong></span>
+                        </div>
+                        {groceryCards[b.id].approvedItems && (
+                          <div className="text-xs text-cream-muted">
+                            <span className="font-medium">Approved items:</span> {(() => { try { return JSON.parse(groceryCards[b.id].approvedItems!).join(", "); } catch { return groceryCards[b.id].approvedItems; } })()}
+                          </div>
+                        )}
+
+                        {/* Card Details (number, exp, cvc) */}
+                        {groceryCards[b.id].stripeCardId && groceryCards[b.id].status === "ACTIVE" && (
+                          <div className="space-y-2">
+                            {!cardDetails[b.id] ? (
+                              <button
+                                onClick={() => viewCardDetails(groceryCards[b.id].id, b.id)}
+                                disabled={cardDetailsLoading[b.id]}
+                                className="text-sm text-gold hover:text-gold-light transition-colors disabled:opacity-40"
+                              >
+                                {cardDetailsLoading[b.id] ? "Loading..." : "👁 View Card Details (Number, Exp, CVC)"}
+                              </button>
+                            ) : (
+                              <div className="bg-gradient-to-br from-dark-card to-dark border border-gold/30 p-4 rounded space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-cream-muted/60 uppercase tracking-wider">Virtual Card Details</span>
+                                  <button onClick={() => setCardDetails(prev => ({ ...prev, [b.id]: null }))} className="text-cream-muted/40 text-xs hover:text-cream transition-colors">Hide</button>
+                                </div>
+                                <p className="font-mono text-lg tracking-widest text-cream">{cardDetails[b.id]!.number.replace(/(\d{4})/g, "$1 ").trim()}</p>
+                                <div className="flex gap-6 text-sm">
+                                  <span className="text-cream-muted">EXP <strong className="text-cream">{String(cardDetails[b.id]!.exp_month).padStart(2, "0")}/{cardDetails[b.id]!.exp_year}</strong></span>
+                                  <span className="text-cream-muted">CVC <strong className="text-cream">{cardDetails[b.id]!.cvc}</strong></span>
+                                </div>
+                                <p className="text-[10px] text-gold/70 mt-2"> Add to Apple Pay: Open Wallet app → + → Debit Card → Enter details above</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {groceryCards[b.id].status === "ACTIVE" && (
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Amount spent"
+                              value={spendAmount[b.id] || ""}
+                              onChange={(e) => setSpendAmount(prev => ({ ...prev, [b.id]: e.target.value }))}
+                              className="border border-dark-border bg-dark px-3 py-2 text-sm text-cream w-32"
+                            />
+                            <button
+                              onClick={() => recordSpending(groceryCards[b.id].id, b.id)}
+                              className="bg-gold text-dark px-4 py-2 text-xs font-semibold hover:bg-gold-light transition-colors"
+                            >
+                              Record Spending
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

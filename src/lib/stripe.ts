@@ -141,3 +141,116 @@ export async function createCheckoutPaymentIntent(
     metadata: { ...metadata, serviceFeeCents: String(serviceFeeCents) },
   });
 }
+
+// ── Stripe Issuing helpers (Grocery Cards) ──
+
+/** Create an Issuing cardholder for a chef */
+export async function createIssuingCardholder(
+  name: string,
+  email: string,
+  phone: string | null,
+  billingAddress: { line1: string; city: string; state: string; postal_code: string; country: string }
+): Promise<Stripe.Issuing.Cardholder> {
+  if (!stripe) throw new Error("Stripe not configured");
+  return stripe.issuing.cardholders.create({
+    name,
+    email,
+    phone_number: phone || undefined,
+    status: "active",
+    type: "individual",
+    billing: { address: billingAddress },
+  });
+}
+
+/** Create a virtual Issuing card for a chef's grocery purchases */
+export async function createIssuingCard(
+  cardholderId: string,
+  spendingLimitCents: number,
+  metadata: Record<string, string>
+): Promise<Stripe.Issuing.Card> {
+  if (!stripe) throw new Error("Stripe not configured");
+  return stripe.issuing.cards.create({
+    cardholder: cardholderId,
+    currency: "usd",
+    type: "virtual",
+    status: "active",
+    spending_controls: {
+      spending_limits: [
+        { amount: spendingLimitCents, interval: "all_time" },
+      ],
+      allowed_categories: [
+        "grocery_stores_supermarkets",
+        "dairy_products_stores",
+        "bakeries",
+        "caterers",
+        "miscellaneous_food_stores",
+      ],
+    },
+    metadata,
+  });
+}
+
+/** Retrieve full card details (number, exp, cvc) — sensitive, for chef's eyes only */
+export async function retrieveIssuingCardDetails(cardId: string): Promise<{
+  number: string;
+  exp_month: number;
+  exp_year: number;
+  cvc: string;
+}> {
+  if (!stripe) throw new Error("Stripe not configured");
+  // Use expand to get the full card number and CVC
+  const card = await stripe.issuing.cards.retrieve(cardId, {
+    expand: ["number", "cvc"],
+  });
+  return {
+    number: (card as any).number || "",
+    exp_month: card.exp_month,
+    exp_year: card.exp_year,
+    cvc: (card as any).cvc || "",
+  };
+}
+
+/** Update an Issuing card's status (active, inactive, canceled) */
+export async function updateIssuingCardStatus(
+  cardId: string,
+  status: "active" | "inactive" | "canceled"
+): Promise<Stripe.Issuing.Card> {
+  if (!stripe) throw new Error("Stripe not configured");
+  return stripe.issuing.cards.update(cardId, { status });
+}
+
+/** Update spending limit on an Issuing card */
+export async function updateIssuingCardSpendingLimit(
+  cardId: string,
+  newLimitCents: number
+): Promise<Stripe.Issuing.Card> {
+  if (!stripe) throw new Error("Stripe not configured");
+  return stripe.issuing.cards.update(cardId, {
+    spending_controls: {
+      spending_limits: [
+        { amount: newLimitCents, interval: "all_time" },
+      ],
+      allowed_categories: [
+        "grocery_stores_supermarkets",
+        "dairy_products_stores",
+        "bakeries",
+        "caterers",
+        "miscellaneous_food_stores",
+      ],
+    },
+  });
+}
+
+/** Create an ephemeral key for Apple Pay / Google Pay provisioning */
+export async function createIssuingEphemeralKey(
+  cardId: string,
+  nonce: string
+): Promise<{ ephemeral_key_secret: string }> {
+  if (!stripe) throw new Error("Stripe not configured");
+  // Stripe Issuing ephemeral keys for push provisioning
+  const key = await stripe.ephemeralKeys.create(
+    { issuing_card: cardId, nonce },
+    { apiVersion: "2026-03-25.dahlia" }
+  );
+  return { ephemeral_key_secret: key.secret! };
+}
