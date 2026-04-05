@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { trackInterest, extractDishKeywords, useScrollTracker } from "@/lib/tracking";
 
 interface FeedSpecial {
@@ -56,6 +57,7 @@ const REASON_BADGES: Record<string, { bg: string; text: string }> = {
 };
 
 export default function ForYouPage() {
+  usePageTitle("For You");
   const [specials, setSpecials] = useState<FeedSpecial[]>([]);
   const [loading, setLoading] = useState(true);
   const [personalized, setPersonalized] = useState(false);

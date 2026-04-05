@@ -44,10 +44,18 @@ export async function POST(req: NextRequest) {
 
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     token,
     user: { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: true },
   });
+  res.cookies.set("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+  });
+  return res;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

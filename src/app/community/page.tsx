@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface Post {
   id: string;
@@ -26,6 +27,7 @@ interface Comment {
 }
 
 export default function CommunityPage() {
+  usePageTitle("Community");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);

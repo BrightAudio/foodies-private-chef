@@ -3,8 +3,10 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function VerifyEmailContent() {
+  usePageTitle("Verify Email");
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");

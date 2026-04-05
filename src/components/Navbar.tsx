@@ -38,9 +38,10 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* ignore */ }
     window.location.href = "/";
   };
 

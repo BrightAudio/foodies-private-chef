@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import toast from "react-hot-toast";
 import { getStoredUser } from "@/lib/stored-user";
 import Image from "next/image";
@@ -101,6 +102,7 @@ interface LegalTerms {
 }
 
 export default function ChefDashboard() {
+  usePageTitle("Chef Dashboard");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");

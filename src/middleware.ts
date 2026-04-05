@@ -98,7 +98,7 @@ export async function middleware(req: NextRequest) {
   // Auth protection for sensitive API routes
   if (PROTECTED_PREFIXES.some(prefix => path.startsWith(prefix))) {
     const authHeader = req.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : req.cookies.get("token")?.value || null;
     if (!token) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }

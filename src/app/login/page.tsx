@@ -3,8 +3,10 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function LoginForm() {
+  usePageTitle("Log In");
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface MenuItem {
   id: string;
@@ -25,6 +26,7 @@ interface FoodTruck {
 }
 
 export default function FoodTrucksPage() {
+  usePageTitle("Food Trucks");
   const [trucks, setTrucks] = useState<FoodTruck[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

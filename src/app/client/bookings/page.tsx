@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import StarInput from "@/components/StarInput";
 import toast from "react-hot-toast";
 
@@ -33,6 +34,7 @@ interface Booking {
 }
 
 export default function ClientBookings() {
+  usePageTitle("My Bookings");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -60,12 +62,20 @@ export default function ClientBookings() {
     bookingId: string;
   }
   const [dishRequests, setDishRequests] = useState<DishReq[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const LIMIT = 20;
 
   useEffect(() => {
     if (!localStorage.getItem("token")) { window.location.href = "/login"; return; }
     fetchBookings();
     fetchDishRequests();
   }, []);
+
+  useEffect(() => {
+    fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const fetchDishRequests = async () => {
     const token = localStorage.getItem("token");
@@ -90,9 +100,10 @@ export default function ClientBookings() {
   const fetchBookings = async () => {
     const token = localStorage.getItem("token");
     if (!token) { window.location.href = "/login"; return; }
-    const res = await fetch("/api/bookings?limit=50", { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`/api/bookings?limit=${LIMIT}&page=${page}`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     setBookings(data.bookings || data);
+    setTotalBookings(data.total || 0);
     setLoading(false);
   };
 
@@ -654,6 +665,29 @@ export default function ClientBookings() {
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalBookings > LIMIT && (
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-dark-border text-cream-muted hover:text-cream hover:border-gold transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ← Previous
+            </button>
+            <span className="text-cream-muted text-sm">
+              Page {page} of {Math.ceil(totalBookings / LIMIT)}
+            </span>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= Math.ceil(totalBookings / LIMIT)}
+              className="px-4 py-2 border border-dark-border text-cream-muted hover:text-cream hover:border-gold transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
           </div>
         )}
       </div>

@@ -44,3 +44,9 @@ input:focus, select:focus, textarea:focus {
   border-color: #C8A96A;
   box-shadow: 0 0 0 1px rgba(200, 169, 106, 0.3);
 }
+
+a:focus-visible, button:focus-visible, [role="button"]:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #C8A96A;
+  outline-offset: 2px;
+}

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CUISINE_OPTIONS = [
   "Italian", "Japanese", "Mexican", "Indian", "French", "Mediterranean",
@@ -20,6 +21,7 @@ const ALLERGY_OPTIONS = [
 ];
 
 export default function ClientProfilePage() {
+  usePageTitle("My Profile");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

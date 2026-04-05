@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import StarRating from "@/components/StarRating";
 import { trackInterest } from "@/lib/tracking";
 
@@ -64,9 +66,17 @@ type TierKey = keyof typeof TIER_CONFIG;
 type Step = "tier" | "event" | "chefs";
 
 export default function BrowseChefs() {
-  const [step, setStep] = useState<Step>("tier");
-  const [selectedTier, setSelectedTier] = useState<TierKey | null>(null);
-  const [eventDetails, setEventDetails] = useState({ date: "", time: "", guests: "", cuisine: "" });
+  usePageTitle("Browse Chefs");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [step, setStep] = useState<Step>((searchParams.get("step") as Step) || "tier");
+  const [selectedTier, setSelectedTier] = useState<TierKey | null>((searchParams.get("tier") as TierKey) || null);
+  const [eventDetails, setEventDetails] = useState({
+    date: searchParams.get("date") || "",
+    time: searchParams.get("time") || "",
+    guests: searchParams.get("guests") || "",
+    cuisine: searchParams.get("cuisine") || "",
+  });
   const [eventErrors, setEventErrors] = useState<Record<string, string>>({});
   const [chefs, setChefs] = useState<Chef[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,12 +86,30 @@ export default function BrowseChefs() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sync state to URL params
+  const syncURL = useCallback((s: Step, tier: TierKey | null, details: typeof eventDetails) => {
+    const params = new URLSearchParams();
+    if (s !== "tier") params.set("step", s);
+    if (tier) params.set("tier", tier);
+    if (details.date) params.set("date", details.date);
+    if (details.time) params.set("time", details.time);
+    if (details.guests) params.set("guests", details.guests);
+    if (details.cuisine) params.set("cuisine", details.cuisine);
+    const qs = params.toString();
+    router.replace(qs ? `/browse?${qs}` : "/browse", { scroll: false });
+  }, [router]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       setIsLoggedIn(true);
       fetchFavorites(token);
     }
+    // If returning to page with chefs step, re-fetch
+    if (step === "chefs" && selectedTier) {
+      refetchChefs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchFavorites = async (token: string) => {
@@ -122,6 +150,7 @@ export default function BrowseChefs() {
   const handleTierSelect = (tier: TierKey) => {
     setSelectedTier(tier);
     setStep("event");
+    syncURL("event", tier, eventDetails);
   };
 
   const handleEventSubmit = async (e: React.FormEvent) => {
@@ -141,6 +170,7 @@ export default function BrowseChefs() {
 
     setLoading(true);
     setStep("chefs");
+    syncURL("chefs", selectedTier, eventDetails);
     if (eventDetails.cuisine) {
       trackInterest({ signalType: "SEARCH", cuisineType: eventDetails.cuisine });
     }
@@ -203,9 +233,9 @@ export default function BrowseChefs() {
               {i > 0 && <div className="w-8 h-px bg-dark-border" />}
               <button
                 onClick={() => {
-                  if (s.key === "tier") setStep("tier");
-                  else if (s.key === "event" && selectedTier) setStep("event");
-                  else if (s.key === "chefs" && selectedTier && chefs.length > 0) setStep("chefs");
+                  if (s.key === "tier") { setStep("tier"); syncURL("tier", selectedTier, eventDetails); }
+                  else if (s.key === "event" && selectedTier) { setStep("event"); syncURL("event", selectedTier, eventDetails); }
+                  else if (s.key === "chefs" && selectedTier && chefs.length > 0) { setStep("chefs"); syncURL("chefs", selectedTier, eventDetails); }
                 }}
                 className={`text-xs font-medium tracking-wider uppercase px-3 py-1.5 border transition-colors ${
                   step === s.key
@@ -317,7 +347,7 @@ export default function BrowseChefs() {
               <div className="flex gap-4 pt-2">
                 <button
                   type="button"
-                  onClick={() => setStep("tier")}
+                  onClick={() => { setStep("tier"); syncURL("tier", selectedTier, eventDetails); }}
                   className="px-6 py-3 border border-dark-border text-cream-muted hover:text-cream hover:border-cream-muted transition-colors text-sm"
                 >
                   ← Back
@@ -344,7 +374,7 @@ export default function BrowseChefs() {
                 </h1>
               </div>
               <button
-                onClick={() => setStep("event")}
+                onClick={() => { setStep("event"); syncURL("event", selectedTier, eventDetails); }}
                 className="px-4 py-2 border border-dark-border text-cream-muted hover:text-cream hover:border-cream-muted transition-colors text-xs"
               >
                 ← Change Details
@@ -382,7 +412,7 @@ export default function BrowseChefs() {
                 <p className="text-cream-muted text-lg">No {TIER_CONFIG[selectedTier].label} chefs found.</p>
                 <p className="text-cream-muted/50 mt-2">Try adjusting your search or selecting a different tier.</p>
                 <button
-                  onClick={() => setStep("tier")}
+                  onClick={() => { setStep("tier"); syncURL("tier", selectedTier, eventDetails); }}
                   className="mt-6 px-6 py-3 border border-gold text-gold hover:bg-gold hover:text-dark transition-colors text-sm"
                 >
                   Browse Other Tiers

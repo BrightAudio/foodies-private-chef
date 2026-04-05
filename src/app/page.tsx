@@ -3,8 +3,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import FeaturedTrucks from "@/components/FeaturedTrucks";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
+  usePageTitle("");
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   useEffect(() => {
     const stored = localStorage.getItem("user");

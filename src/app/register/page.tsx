@@ -3,8 +3,10 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function RegisterForm() {
+  usePageTitle("Sign Up");
   const searchParams = useSearchParams();
   const router = useRouter();
   const defaultRole = searchParams.get("role") === "CHEF" ? "CHEF" : "CLIENT";

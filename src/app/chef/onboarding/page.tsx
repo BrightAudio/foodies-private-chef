@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import ImageUpload from "@/components/ImageUpload";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { getStoredUser } from "@/lib/stored-user";
 
 interface Special {
@@ -51,6 +52,7 @@ By accepting these terms, I agree that:
 5. All communication with clients must occur through the Foodies in-app messaging system.`;
 
 export default function ChefOnboarding() {
+  usePageTitle("Chef Onboarding");
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -179,6 +181,9 @@ export default function ChefOnboarding() {
 
       const user = getStoredUser() || {};
       localStorage.setItem("user", JSON.stringify({ ...user, role: "CHEF" }));
+
+      // Clear sensitive data from state before redirect
+      setForm((prev) => ({ ...prev, bgCheckSSN: "", bgCheckSSNLast4: "" }));
 
       window.location.href = "/chef/dashboard";
     } catch (err: unknown) {
@@ -368,6 +373,7 @@ export default function ChefOnboarding() {
                     type="password"
                     maxLength={9}
                     inputMode="numeric"
+                    autoComplete="off"
                     className="w-full border border-dark-border bg-dark px-4 py-3 text-cream"
                     placeholder="•••••••••"
                     value={form.bgCheckSSN}

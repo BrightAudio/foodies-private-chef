@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface AdminChef {
   id: string;
@@ -228,6 +229,7 @@ interface Incident {
 }
 
 export default function AdminDashboard() {
+  usePageTitle("Admin Dashboard");
   const [tab, setTab] = useState<Tab>("chefs");
   const [chefs, setChefs] = useState<AdminChef[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
