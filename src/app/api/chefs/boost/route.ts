@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 const BOOST_PRICE_CENTS = Number(process.env.BOOST_PRICE_CENTS) || 1999; // $19.99/week
 const BOOST_DURATION_DAYS = 7;
 
 // GET /api/chefs/boost — get current boost status
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/chefs/boost — activate boost (would integrate with Stripe in production)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -72,3 +73,7 @@ export async function POST(req: NextRequest) {
     charged: BOOST_PRICE_CENTS / 100,
   });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

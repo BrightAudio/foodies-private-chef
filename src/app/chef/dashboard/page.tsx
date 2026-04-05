@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
+import toast from "react-hot-toast";
+import { getStoredUser } from "@/lib/stored-user";
+import Image from "next/image";
 
 const TIER_INFO: Record<string, { label: string; emoji: string; color: string; badgeColor: string }> = {
   SOUS_CHEF: { label: "Sous Chef", emoji: "🔪", color: "text-blue-400", badgeColor: "bg-blue-500/10 text-blue-400 border border-blue-500/20" },
@@ -279,8 +282,8 @@ export default function ChefDashboard() {
   const fetchTierData = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    // Get chef profile via the bookings — we need to find our profile
+    const user = getStoredUser();
+    if (!user) return;
     try {
       const res = await fetch("/api/chefs?limit=50", { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
@@ -415,7 +418,7 @@ export default function ChefDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) { newWindow?.close(); alert(data.error); return; }
+      if (!res.ok) { newWindow?.close(); toast.error(data.error); return; }
       if (data.alreadyOnboarded && data.dashboardUrl) {
         if (newWindow) newWindow.location.href = data.dashboardUrl;
         else window.location.href = data.dashboardUrl;
@@ -425,7 +428,7 @@ export default function ChefDashboard() {
       } else {
         newWindow?.close();
       }
-    } catch { newWindow?.close(); alert("Failed to set up payments"); }
+    } catch { newWindow?.close(); toast.error("Failed to set up payments"); }
     finally { setStripeLoading(false); }
   };
 
@@ -445,7 +448,7 @@ export default function ChefDashboard() {
         fetchInsurance();
       } else {
         const data = await res.json();
-        alert(data.error);
+        toast.error(data.error);
       }
     } finally { setInsuranceUploading(false); }
   };
@@ -465,9 +468,9 @@ export default function ChefDashboard() {
         fetchLegalTerms();
       } else {
         const data = await res.json();
-        alert(data.error);
+        toast.error(data.error);
       }
-    } catch { alert("Failed to accept terms"); }
+    } catch { toast.error("Failed to accept terms"); }
   };
 
   const handleInsuranceFileUpload = async (file: File) => {
@@ -935,7 +938,7 @@ export default function ChefDashboard() {
                     )}
                     {s.imageUrl && (
                       <div className="h-36 relative">
-                        <img src={s.imageUrl} alt={s.name} className="w-full h-full object-cover" />
+                        <Image src={s.imageUrl} alt={s.name} width={400} height={144} className="w-full h-full object-cover" />
                       </div>
                     )}
                     <div className="p-4">
@@ -987,7 +990,7 @@ export default function ChefDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {gallery.map((img) => (
                   <div key={img.id} className="relative group bg-dark-card border border-dark-border overflow-hidden">
-                    <img src={img.url} alt={img.caption || "Gallery"} className="w-full h-48 object-cover" />
+                    <Image src={img.url} alt={img.caption || "Gallery"} width={400} height={192} className="w-full h-48 object-cover" />
                     <button
                       onClick={() => deleteGalleryImage(img.id)}
                       className="absolute top-2 right-2 bg-red-500/80 text-white w-7 h-7 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -1818,10 +1821,10 @@ export default function ChefDashboard() {
                         headers: { Authorization: `Bearer ${token}` },
                       });
                       const data = await res.json();
-                      if (!res.ok) { alert(data.error); return; }
+                      if (!res.ok) { toast.error(data.error); return; }
                       fetchInsurance();
-                      alert(data.message);
-                    } catch { alert("Failed to boost"); }
+                      toast.success(data.message);
+                    } catch { toast.error("Failed to boost"); }
                     finally { setBoostLoading(false); }
                   }}
                   disabled={boostLoading || insurance?.activationStatus !== "ACTIVE"}

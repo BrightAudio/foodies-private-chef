@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/chefs/availability?chefProfileId=xxx&month=2026-04
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const chefProfileId = req.nextUrl.searchParams.get("chefProfileId");
   const month = req.nextUrl.searchParams.get("month"); // YYYY-MM
 
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/chefs/availability — set availability (chef only)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE /api/chefs/availability — remove blocked date
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -143,3 +144,8 @@ export async function DELETE(req: NextRequest) {
   await prisma.chefAvailability.delete({ where: { id: availabilityId } });
   return NextResponse.json({ success: true });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const DELETE = withErrorHandler(_DELETE);

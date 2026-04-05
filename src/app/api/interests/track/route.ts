@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // Signal weights — how strongly each action indicates interest
 // Mirrors Facebook's engagement scoring: passive signals < active < transactional
@@ -18,7 +19,7 @@ const SIGNAL_WEIGHTS: Record<string, number> = {
 
 // POST /api/interests/track — record a user interest signal (fire-and-forget from client)
 // Captures device, location (Vercel headers), referrer, UTM — like Meta Pixel
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
     return NextResponse.json({ ok: true }); // Silently ignore anonymous users
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/interests/profile — get user's interest profile (top cuisines + keywords)
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
     return NextResponse.json({ cuisines: [], keywords: [] });
@@ -121,3 +122,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ cuisines, keywords });
 }
+
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

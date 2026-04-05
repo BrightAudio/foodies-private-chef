@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 import {
   isStripeEnabled,
   createConnectAccount,
@@ -12,7 +13,7 @@ import {
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // POST /api/stripe/connect — Create Stripe Connect Express account for chef
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "CHEF") {
     return NextResponse.json({ error: "Only chefs can create payment accounts" }, { status: 403 });
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/stripe/connect — Check Connect account status
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -109,3 +110,7 @@ export async function GET(req: NextRequest) {
     detailsSubmitted: status.detailsSubmitted,
   });
 }
+
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

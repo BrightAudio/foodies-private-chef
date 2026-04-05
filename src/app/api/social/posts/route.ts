@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/social/posts — get social feed
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const page = Number(searchParams.get("page")) || 1;
   const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/social/posts — create a new post
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) return NextResponse.json({ error: "Sign in to post" }, { status: 401 });
 
@@ -117,3 +118,7 @@ export async function POST(req: NextRequest) {
     createdAt: post.createdAt.toISOString(),
   }, { status: 201 });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

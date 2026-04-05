@@ -171,7 +171,7 @@ function RegisterForm() {
               />
               <span className="text-xs text-cream-muted leading-relaxed">
                 I have read and agree to the Foodies{" "}
-                <Link href="/terms" target="_blank" className="text-gold underline hover:text-gold-light">
+                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-gold underline hover:text-gold-light">
                   Terms of Service
                 </Link>
                 , including the non-circumvention agreement, dispute resolution policy, and payment terms.

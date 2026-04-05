@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/favorites — get user's favorite chefs
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/favorites — add a favorite chef
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE /api/favorites — remove a favorite chef
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -96,3 +97,8 @@ export async function DELETE(req: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const DELETE = withErrorHandler(_DELETE);

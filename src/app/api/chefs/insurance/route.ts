@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // PATCH /api/chefs/insurance — Upload/update insurance doc + expiry
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "CHEF") {
     return NextResponse.json({ error: "Only chefs can update insurance" }, { status: 403 });
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 // GET /api/chefs/insurance — Get current insurance status
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -73,3 +74,7 @@ export async function GET(req: NextRequest) {
     isExpired,
   });
 }
+
+
+export const PATCH = withErrorHandler(_PATCH);
+export const GET = withErrorHandler(_GET);

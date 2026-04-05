@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // POST /api/bookings/[id]/location — Silent location check-in (chef only)
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 // GET /api/bookings/[id]/location — Admin: view location evidence for disputes
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
@@ -87,3 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 }
+
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

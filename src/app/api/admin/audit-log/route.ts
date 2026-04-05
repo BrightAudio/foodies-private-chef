@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/admin/audit-log — get audit trail
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -29,3 +30,6 @@ export async function GET(req: NextRequest) {
     nextCursor: hasMore ? items[items.length - 1].id : null,
   });
 }
+
+
+export const GET = withErrorHandler(_GET);

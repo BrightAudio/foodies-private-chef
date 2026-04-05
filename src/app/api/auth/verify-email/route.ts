@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/auth/verify-email?token=xxx — Verify email address
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
 
   if (!token) {
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/auth/verify-email — Resend verification email
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const { email } = await req.json();
 
   if (!email) {
@@ -70,3 +71,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ message: "If that email is registered, a verification link has been sent." });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

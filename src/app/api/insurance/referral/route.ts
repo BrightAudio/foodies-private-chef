@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 const INSURANCE_PROVIDER_URL = process.env.INSURANCE_PROVIDER_URL || "https://thimble.com/partner/foodies";
 
 // POST /api/insurance/referral — record insurance referral click + get redirect URL
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/insurance/referral — get user's referral history
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,3 +42,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ referrals });
 }
+
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTierInfo } from "@/lib/tiers";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/chefs/[id] — get chef details
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const chef = await prisma.chefProfile.findUnique({
@@ -38,3 +39,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     trustScore: chef.trustScore,
   });
 }
+
+
+export const GET = withErrorHandler(_GET);

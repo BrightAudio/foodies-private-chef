@@ -4,9 +4,10 @@ import { getTokenFromRequest } from "@/lib/auth";
 import { getTierInfo, getMaxRate } from "@/lib/tiers";
 import { cacheGet, cacheSet } from "@/lib/redis";
 import { encrypt } from "@/lib/crypto";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/chefs — browse approved chefs (public, cached)
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const specialty = searchParams.get("specialty") || undefined;
   const cuisineType = searchParams.get("cuisineType") || searchParams.get("cuisine") || undefined;
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/chefs — chef onboarding (requires auth)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -284,3 +285,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(chefProfile, { status: 201 });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

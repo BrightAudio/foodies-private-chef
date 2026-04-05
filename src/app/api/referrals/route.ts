@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import crypto from "crypto";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 const REFERRAL_CREDIT_AMOUNT = Number(process.env.REFERRAL_CREDIT_AMOUNT) || 25;
 
 // GET /api/referrals — get user's referral code + stats
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/referrals — apply a referral code (called during signup)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,3 +100,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ message: "Referral applied! Credits will be issued after first booking." });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

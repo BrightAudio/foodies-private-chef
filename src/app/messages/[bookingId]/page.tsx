@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, use } from "react";
 import Navbar from "@/components/Navbar";
+import { getStoredUser } from "@/lib/stored-user";
 
 interface Message {
   id: string;
@@ -20,8 +21,8 @@ export default function MessagesPage({ params }: { params: Promise<{ bookingId: 
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    setUserId(user.id || "");
+    const user = getStoredUser();
+    setUserId(user?.id || "");
     fetchMessages();
     // Poll for new messages every 5 seconds
     const interval = setInterval(fetchMessages, 5000);

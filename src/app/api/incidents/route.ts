@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { logAuditAction } from "@/lib/auditLog";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // POST /api/incidents — Create an incident report
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/incidents — List incidents (admin sees all, users see their own)
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -89,3 +90,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(incidents);
 }
+
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

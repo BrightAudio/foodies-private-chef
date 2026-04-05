@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/food-trucks — list active food trucks (public)
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const cuisine = searchParams.get("cuisine") || undefined;
   const featured = searchParams.get("featured");
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/food-trucks — create a food truck (requires auth)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -75,3 +76,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(truck, { status: 201 });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

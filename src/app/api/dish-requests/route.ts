@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // POST /api/dish-requests — client creates a custom dish request (Chef/Master Chef only)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/dish-requests — get dish requests for current user (client sees theirs, chef sees theirs)
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/dish-requests — chef quotes (adds grocery list) or client approves/rejects
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -165,3 +166,8 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 }
+
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);
+export const PATCH = withErrorHandler(_PATCH);

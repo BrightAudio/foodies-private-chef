@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
 
@@ -729,7 +730,7 @@ export default function AdminDashboard() {
                                     <div>
                                       <p className="text-cream-muted/60 mb-1">Gov ID:</p>
                                       <a href={chef.governmentIdUrl} target="_blank" rel="noopener noreferrer" className="block border border-dark-border hover:border-gold/50 transition-colors">
-                                        <img src={chef.governmentIdUrl} alt="Government ID" className="w-full h-20 object-cover" />
+                                        <Image src={chef.governmentIdUrl} alt="Government ID" width={300} height={80} className="w-full h-20 object-cover" />
                                       </a>
                                     </div>
                                   )}
@@ -737,7 +738,7 @@ export default function AdminDashboard() {
                                     <div>
                                       <p className="text-cream-muted/60 mb-1">Selfie:</p>
                                       <a href={chef.selfieUrl} target="_blank" rel="noopener noreferrer" className="block border border-dark-border hover:border-gold/50 transition-colors">
-                                        <img src={chef.selfieUrl} alt="Selfie" className="w-full h-20 object-cover" />
+                                        <Image src={chef.selfieUrl} alt="Selfie" width={300} height={80} className="w-full h-20 object-cover" />
                                       </a>
                                     </div>
                                   )}

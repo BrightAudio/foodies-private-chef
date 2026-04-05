@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/social/posts/[id]/comments — get comments for a post
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const comments = await prisma.postComment.findMany({
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 // POST /api/social/posts/[id]/comments — add a comment
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const token = getTokenFromRequest(req);
   if (!token) return NextResponse.json({ error: "Sign in to comment" }, { status: 401 });
@@ -60,3 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     createdAt: comment.createdAt.toISOString(),
   }, { status: 201 });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/chefs/gallery?chefProfileId=xxx — get chef gallery images (public)
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const chefProfileId = req.nextUrl.searchParams.get("chefProfileId");
   if (!chefProfileId) {
     return NextResponse.json({ error: "chefProfileId required" }, { status: 400 });
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/chefs/gallery — add gallery image (chef only)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE /api/chefs/gallery — remove gallery image
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -78,3 +79,8 @@ export async function DELETE(req: NextRequest) {
   await prisma.chefGalleryImage.delete({ where: { id: imageId } });
   return NextResponse.json({ success: true });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const DELETE = withErrorHandler(_DELETE);

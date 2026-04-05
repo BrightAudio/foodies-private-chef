@@ -5,9 +5,10 @@ import { filterContactInfo, getStrikePenalty } from "@/lib/antiPoaching";
 import { sanitizeText } from "@/lib/sanitize";
 import { notifyNewMessage } from "@/lib/notifications";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/messages?bookingId=xxx — get messages for a booking
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/messages — send a message
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -146,3 +147,7 @@ export async function POST(req: NextRequest) {
     ...(warningMessage ? { warning: warningMessage } : {}),
   }, { status: 201 });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/feed/for-you — personalized specials feed ranked by interest signals
 // Full Facebook ad-targeting model:
@@ -10,7 +11,7 @@ import { getTokenFromRequest } from "@/lib/auth";
 //   4. Social/collaborative: "also booked" graph + referral network
 //   5. Device context: mobile vs desktop behavior
 //   6. UTM/referrer: acquisition channel affinity
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
 
   // Fetch all active specials from approved, active chefs
@@ -251,3 +252,6 @@ function serializeSpecial(s: any) {
     chefJobs: s.chefProfile.completedJobs,
   };
 }
+
+
+export const GET = withErrorHandler(_GET);

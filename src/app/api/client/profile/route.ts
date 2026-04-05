@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/client/profile — get current client's profile
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/client/profile — create or update client profile
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -56,3 +57,7 @@ export async function POST(req: NextRequest) {
     allergies: profile.allergies ? JSON.parse(profile.allergies) : [],
   });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

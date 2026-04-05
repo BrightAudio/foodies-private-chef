@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/chefs/earnings — get earnings report for the authenticated chef
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -106,3 +107,6 @@ export async function GET(req: NextRequest) {
     currentYear,
   });
 }
+
+
+export const GET = withErrorHandler(_GET);

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/chefs/specials — get current chef's specials
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token || token.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/chefs/specials — create a new special
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token || token.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
 }
 
 // PATCH /api/chefs/specials — set an existing special as this week's special
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token || token.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -161,7 +162,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 // DELETE /api/chefs/specials — delete a special
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token || token.role !== "CHEF") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -191,3 +192,9 @@ export async function DELETE(req: NextRequest) {
   await prisma.chefSpecial.delete({ where: { id: specialId } });
   return NextResponse.json({ ok: true });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const PATCH = withErrorHandler(_PATCH);
+export const DELETE = withErrorHandler(_DELETE);

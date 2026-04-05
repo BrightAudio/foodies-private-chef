@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import ImageUpload from "@/components/ImageUpload";
+import { getStoredUser } from "@/lib/stored-user";
 
 interface Special {
   name: string;
@@ -176,9 +177,8 @@ export default function ChefOnboarding() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      user.role = "CHEF";
-      localStorage.setItem("user", JSON.stringify(user));
+      const user = getStoredUser() || {};
+      localStorage.setItem("user", JSON.stringify({ ...user, role: "CHEF" }));
 
       window.location.href = "/chef/dashboard";
     } catch (err: unknown) {
@@ -842,7 +842,7 @@ export default function ChefOnboarding() {
                   <li>Keep your vehicle information current and accurate</li>
                 </ul>
                 <p className="mt-3">
-                  Full terms available at <a href="/terms" className="text-gold underline" target="_blank">foodies.com/terms</a>.
+                  Full terms available at <a href="/terms" className="text-gold underline" target="_blank" rel="noopener noreferrer">foodies.com/terms</a>.
                 </p>
               </div>
               <label className="flex items-start gap-3 cursor-pointer">

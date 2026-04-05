@@ -67,6 +67,7 @@ export default function BrowseChefs() {
   const [step, setStep] = useState<Step>("tier");
   const [selectedTier, setSelectedTier] = useState<TierKey | null>(null);
   const [eventDetails, setEventDetails] = useState({ date: "", time: "", guests: "", cuisine: "" });
+  const [eventErrors, setEventErrors] = useState<Record<string, string>>({});
   const [chefs, setChefs] = useState<Chef[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -126,6 +127,18 @@ export default function BrowseChefs() {
   const handleEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTier) return;
+
+    // Validate form
+    const errors: Record<string, string> = {};
+    const today = new Date().toISOString().split("T")[0];
+    if (!eventDetails.date) errors.date = "Date is required";
+    else if (eventDetails.date < today) errors.date = "Date cannot be in the past";
+    if (!eventDetails.time) errors.time = "Time is required";
+    if (!eventDetails.guests) errors.guests = "Guest count is required";
+    else if (Number(eventDetails.guests) < 1 || Number(eventDetails.guests) > 100) errors.guests = "Guest count must be 1-100";
+    setEventErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setLoading(true);
     setStep("chefs");
     if (eventDetails.cuisine) {
@@ -248,25 +261,30 @@ export default function BrowseChefs() {
               We&apos;ll match you with {TIER_CONFIG[selectedTier].label} chefs ({TIER_CONFIG[selectedTier].priceRange}) available for your event.
             </p>
 
-            <form onSubmit={handleEventSubmit} className="max-w-xl space-y-6">
+            <form onSubmit={handleEventSubmit} className="max-w-xl space-y-6" noValidate>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Event Date</label>
                   <input
                     type="date"
+                    required
+                    min={new Date().toISOString().split("T")[0]}
                     value={eventDetails.date}
-                    onChange={(e) => setEventDetails({ ...eventDetails, date: e.target.value })}
-                    className="w-full border border-dark-border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold"
+                    onChange={(e) => { setEventDetails({ ...eventDetails, date: e.target.value }); setEventErrors((p) => { const n = { ...p }; delete n.date; return n; }); }}
+                    className={`w-full border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold ${eventErrors.date ? "border-red-500" : "border-dark-border"}`}
                   />
+                  {eventErrors.date && <p className="text-red-400 text-xs mt-1">{eventErrors.date}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Start Time</label>
                   <input
                     type="time"
+                    required
                     value={eventDetails.time}
-                    onChange={(e) => setEventDetails({ ...eventDetails, time: e.target.value })}
-                    className="w-full border border-dark-border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold"
+                    onChange={(e) => { setEventDetails({ ...eventDetails, time: e.target.value }); setEventErrors((p) => { const n = { ...p }; delete n.time; return n; }); }}
+                    className={`w-full border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold ${eventErrors.time ? "border-red-500" : "border-dark-border"}`}
                   />
+                  {eventErrors.time && <p className="text-red-400 text-xs mt-1">{eventErrors.time}</p>}
                 </div>
               </div>
 
@@ -274,13 +292,15 @@ export default function BrowseChefs() {
                 <label className="block text-xs font-medium tracking-wider uppercase text-cream-muted mb-2">Number of Guests</label>
                 <input
                   type="number"
+                  required
                   min="1"
                   max="100"
                   placeholder="e.g. 8"
                   value={eventDetails.guests}
-                  onChange={(e) => setEventDetails({ ...eventDetails, guests: e.target.value })}
-                  className="w-full border border-dark-border rounded-none px-4 py-3 bg-dark-card text-cream placeholder:text-cream-muted/40 focus:border-gold"
+                  onChange={(e) => { setEventDetails({ ...eventDetails, guests: e.target.value }); setEventErrors((p) => { const n = { ...p }; delete n.guests; return n; }); }}
+                  className={`w-full border rounded-none px-4 py-3 bg-dark-card text-cream placeholder:text-cream-muted/40 focus:border-gold ${eventErrors.guests ? "border-red-500" : "border-dark-border"}`}
                 />
+                {eventErrors.guests && <p className="text-red-400 text-xs mt-1">{eventErrors.guests}</p>}
               </div>
 
               <div>

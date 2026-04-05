@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // POST /api/tips — leave a tip for a completed booking
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,3 +58,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(tip, { status: 201 });
 }
+
+
+export const POST = withErrorHandler(_POST);

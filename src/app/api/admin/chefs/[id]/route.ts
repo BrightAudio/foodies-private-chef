@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { logAuditAction } from "@/lib/auditLog";
 import { notifyBgCheckUpdate } from "@/lib/notifications";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // PATCH /api/admin/chefs/[id] — approve/deactivate chef, manage verification
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = getTokenFromRequest(req);
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -86,3 +87,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json(updated);
 }
+
+
+export const PATCH = withErrorHandler(_PATCH);

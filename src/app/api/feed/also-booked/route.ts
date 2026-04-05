@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/feed/also-booked — collaborative filtering
 // "Clients who booked [chef X] also booked [chef Y]"
 // Like Facebook's friend-based ad targeting — uses the booking graph
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token) {
     return NextResponse.json({ chefs: [] });
@@ -153,3 +154,6 @@ export async function GET(req: NextRequest) {
     referralChefs,
   });
 }
+
+
+export const GET = withErrorHandler(_GET);

@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, calculateFees } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize";
 import { notifyBookingCreated } from "@/lib/notifications";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // GET /api/bookings — get user's bookings
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -78,7 +79,7 @@ function redactAddress(booking: Record<string, unknown>): Record<string, unknown
 }
 
 // POST /api/bookings — create a booking
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -183,3 +184,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(booking, { status: 201 });
 }
+
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);

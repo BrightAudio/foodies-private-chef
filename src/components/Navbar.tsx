@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getStoredUser, getStoredToken } from "@/lib/stored-user";
 
 export default function Navbar() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
@@ -8,13 +9,13 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
+    const u = getStoredUser();
+    if (u) setUser(u);
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (!token) return;
     const fetchUnread = async () => {
       try {

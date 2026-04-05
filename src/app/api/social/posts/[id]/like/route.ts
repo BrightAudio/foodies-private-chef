@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 // POST /api/social/posts/[id]/like — toggle like on a post
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const token = getTokenFromRequest(req);
   if (!token) return NextResponse.json({ error: "Sign in to like posts" }, { status: 401 });
@@ -27,3 +28,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ liked: true });
   }
 }
+
+
+export const POST = withErrorHandler(_POST);

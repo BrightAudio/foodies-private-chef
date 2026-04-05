@@ -4,6 +4,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
 import StarInput from "@/components/StarInput";
+import toast from "react-hot-toast";
 
 interface Booking {
   id: string;
@@ -128,7 +129,7 @@ export default function ClientBookings() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookingId, amount: Number(tipAmount), message: tipMessage || undefined }),
       });
-      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      if (!res.ok) { const d = await res.json(); toast.error(d.error); return; }
       setTippingId(null);
       setTipAmount("");
       setTipMessage("");
@@ -149,7 +150,7 @@ export default function ClientBookings() {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error);
+        toast.error(data.error);
         return;
       }
       setReviewingId(null);
@@ -163,7 +164,7 @@ export default function ClientBookings() {
 
   const submitIncident = async (bookingId: string, chefUserId?: string) => {
     const token = localStorage.getItem("token");
-    if (!incidentDescription.trim()) { alert("Please describe the issue"); return; }
+    if (!incidentDescription.trim()) { toast.error("Please describe the issue"); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/incidents", {
@@ -177,12 +178,12 @@ export default function ClientBookings() {
           description: incidentDescription.trim(),
         }),
       });
-      if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+      if (!res.ok) { const d = await res.json(); toast.error(d.error); return; }
       setReportingId(null);
       setIncidentDescription("");
       setIncidentType("SAFETY");
       setIncidentSeverity("MEDIUM");
-      alert("Report submitted. Our team will review it shortly.");
+      toast.success("Report submitted. Our team will review it shortly.");
     } finally { setSubmitting(false); }
   };
 
@@ -215,9 +216,9 @@ export default function ClientBookings() {
         setReviewingId(bookingId); // Auto-prompt review
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to confirm");
+        toast.error(data.error || "Failed to confirm");
       }
-    } catch { alert("Failed to confirm completion"); }
+    } catch { toast.error("Failed to confirm completion"); }
   };
 
   return (
