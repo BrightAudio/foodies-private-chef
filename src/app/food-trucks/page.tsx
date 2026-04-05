@@ -63,7 +63,7 @@ export default function FoodTrucksPage() {
   return (
     <>
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 pt-28 pb-16">
+      <div id="main-content" className="max-w-7xl mx-auto px-4 pt-28 pb-16">
         <p className="text-gold text-xs font-medium tracking-[0.25em] uppercase mb-3">Street Food</p>
         <h1 className="text-4xl font-bold mb-4 tracking-tight">Food Trucks</h1>
         <p className="text-cream-muted mb-10 max-w-2xl">

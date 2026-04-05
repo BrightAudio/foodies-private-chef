@@ -42,7 +42,19 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://js.stripe.com" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
+      </head>
       <body className="bg-dark text-cream min-h-screen">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-gold focus:text-dark focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:rounded"
+        >
+          Skip to content
+        </a>
         <ErrorBoundaryWrapper>{children}</ErrorBoundaryWrapper>
         <AppTutorial />
         <Toaster

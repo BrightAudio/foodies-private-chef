@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
 import { trackInterest, extractDishKeywords, createDwellTracker, createScrollTracker, trackReturnVisit } from "@/lib/tracking";
@@ -166,6 +167,7 @@ export default function ChefProfilePage() {
         }
 
         setSuccess("Booking submitted! The chef will confirm shortly.");
+        toast.success("Booking submitted!");
         setBookingOpen(false);
         trackInterest({ signalType: "BOOK", chefProfileId: id as string, cuisineType: chef?.cuisineType || undefined });
         return;
@@ -175,6 +177,7 @@ export default function ChefProfilePage() {
       throw new Error(errData.error || "Booking failed");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Booking failed");
+      toast.error(err instanceof Error ? err.message : "Booking failed");
     } finally {
       setSubmitting(false);
     }
@@ -186,7 +189,7 @@ export default function ChefProfilePage() {
   return (
     <>
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 pt-28 pb-16">
+      <div id="main-content" className="max-w-4xl mx-auto px-4 pt-28 pb-16">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
@@ -200,7 +203,7 @@ export default function ChefProfilePage() {
           <div className="flex items-start gap-6">
             {chef.profileImageUrl ? (
               <div className="w-24 h-24 rounded-full overflow-hidden shrink-0 relative">
-                <Image src={chef.profileImageUrl} alt={chef.user.name} fill className="object-cover" sizes="96px" />
+                <Image src={chef.profileImageUrl} alt={chef.user.name} fill className="object-cover" sizes="96px" placeholder="blur" blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhMWExYSIvPjwvc3ZnPg==" />
               </div>
             ) : (
               <div className="w-24 h-24 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
@@ -456,11 +459,12 @@ export default function ChefProfilePage() {
                   total={total}
                   onSuccess={() => {
                     setSuccess("Payment successful! Your booking is confirmed.");
+                    toast.success("Payment confirmed!");
                     setBookingOpen(false);
                     setPaymentStep(false);
                     trackInterest({ signalType: "BOOK", chefProfileId: id as string, cuisineType: chef?.cuisineType || undefined });
                   }}
-                  onError={(msg) => setError(msg)}
+                  onError={(msg) => { setError(msg); toast.error(msg); }}
                 />
               </div>
             ) : (

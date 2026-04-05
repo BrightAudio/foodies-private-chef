@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { logAuditAction } from "@/lib/auditLog";
 import { withErrorHandler } from "@/lib/api-error-handler";
+import { sanitizeText } from "@/lib/sanitize";
 
 // POST /api/incidents — Create an incident report
 async function _POST(req: NextRequest) {
@@ -32,7 +33,7 @@ async function _POST(req: NextRequest) {
       bookingId: bookingId || null,
       type,
       severity: sev,
-      description: description.trim(),
+      description: sanitizeText(description),
       evidence: evidence ? JSON.stringify(evidence) : null,
     },
   });

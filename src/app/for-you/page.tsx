@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import EmptyState from "@/components/EmptyState";
 import { trackInterest, extractDishKeywords, createScrollTracker } from "@/lib/tracking";
 
 interface FeedSpecial {
@@ -109,7 +110,7 @@ export default function ForYouPage() {
   return (
     <>
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 pt-28 pb-16">
+      <div id="main-content" className="max-w-4xl mx-auto px-4 pt-28 pb-16">
         {/* Header */}
         <div className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight mb-2">For You</h1>
@@ -135,12 +136,13 @@ export default function ForYouPage() {
             ))}
           </div>
         ) : specials.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-cream-muted text-lg mb-4">No specials available yet</p>
-            <Link href="/browse" className="text-gold hover:text-gold-light text-sm font-medium tracking-wider uppercase">
-              Browse Chefs →
-            </Link>
-          </div>
+          <EmptyState
+            icon="✨"
+            title="No recommendations yet"
+            description="Browse and book chefs to get personalized suggestions based on your tastes."
+            actionLabel="Browse Chefs"
+            actionHref="/browse"
+          />
         ) : (
           <div className="space-y-6">
             {specials.map((special, idx) => {

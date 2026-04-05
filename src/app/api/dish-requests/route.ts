@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api-error-handler";
+import { sanitizeText } from "@/lib/sanitize";
 
 // POST /api/dish-requests — client creates a custom dish request (Chef/Master Chef only)
 async function _POST(req: NextRequest) {
@@ -34,8 +35,8 @@ async function _POST(req: NextRequest) {
       bookingId: bookingId || null,
       clientId: token.userId,
       chefProfileId,
-      dishName: dishName.trim(),
-      description: description.trim(),
+      dishName: sanitizeText(dishName),
+      description: sanitizeText(description),
       guestCount: Number(guestCount) || 2,
       status: "PENDING",
     },

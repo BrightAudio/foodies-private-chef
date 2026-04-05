@@ -222,7 +222,7 @@ export default function BrowseChefs() {
   return (
     <>
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 pt-28 pb-16">
+      <div id="main-content" className="max-w-7xl mx-auto px-4 pt-28 pb-16">
         {/* Progress Steps */}
         <div className="flex items-center gap-3 mb-10">
           {[
@@ -429,7 +429,7 @@ export default function BrowseChefs() {
                   >
                     <div className="h-52 bg-gradient-to-br from-dark-card to-dark-hover flex items-center justify-center relative overflow-hidden">
                       {chef.profileImageUrl ? (
-                        <Image src={chef.profileImageUrl} alt={chef.name} fill className="object-cover" sizes="400px" />
+                        <Image src={chef.profileImageUrl} alt={chef.name} fill className="object-cover" sizes="400px" placeholder="blur" blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWExYTFhIi8+PC9zdmc+" />
                       ) : (
                         <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center">
                           <span className="text-4xl">👨‍🍳</span>

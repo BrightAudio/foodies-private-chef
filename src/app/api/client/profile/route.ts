@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api-error-handler";
+import { sanitizeText } from "@/lib/sanitize";
 
 // GET /api/client/profile — get current client's profile
 async function _GET(req: NextRequest) {
@@ -37,7 +38,7 @@ async function _POST(req: NextRequest) {
   const { bio, profileImageUrl, favoriteCuisines, dietaryRestrictions, allergies } = body;
 
   const data = {
-    bio: bio || null,
+    bio: bio ? sanitizeText(bio) : null,
     profileImageUrl: profileImageUrl || null,
     favoriteCuisines: Array.isArray(favoriteCuisines) ? JSON.stringify(favoriteCuisines) : null,
     dietaryRestrictions: Array.isArray(dietaryRestrictions) ? JSON.stringify(dietaryRestrictions) : null,

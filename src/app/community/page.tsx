@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import EmptyState from "@/components/EmptyState";
 
 interface Post {
   id: string;
@@ -175,7 +176,7 @@ export default function CommunityPage() {
   return (
     <>
       <Navbar />
-      <div className="max-w-2xl mx-auto px-4 pt-28 pb-16">
+      <div id="main-content" className="max-w-2xl mx-auto px-4 pt-28 pb-16">
         <div className="flex items-center justify-between mb-10">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Community</h1>
@@ -260,10 +261,11 @@ export default function CommunityPage() {
             ))}
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-cream-muted text-lg mb-2">No posts yet</p>
-            <p className="text-cream-muted/50 text-sm">Be the first to share a dining experience!</p>
-          </div>
+          <EmptyState
+            icon="💬"
+            title="No posts yet"
+            description="Be the first to share a dining experience with the community!"
+          />
         ) : (
           <div className="space-y-6">
             {posts.map((post) => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api-error-handler";
+import { sanitizeText } from "@/lib/sanitize";
 
 // GET /api/social/posts/[id]/comments — get comments for a post
 async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -48,7 +49,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
     data: {
       postId: id,
       authorId: token.userId,
-      content: content.trim(),
+      content: sanitizeText(content),
     },
     include: { author: { select: { id: true, name: true } } },
   });

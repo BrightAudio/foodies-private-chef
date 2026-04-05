@@ -6,6 +6,7 @@ import StarRating from "@/components/StarRating";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import StarInput from "@/components/StarInput";
 import toast from "react-hot-toast";
+import EmptyState from "@/components/EmptyState";
 
 interface Booking {
   id: string;
@@ -263,12 +264,13 @@ export default function ClientBookings() {
         {loading ? (
           <p className="text-cream-muted">Loading...</p>
         ) : bookings.length === 0 ? (
-          <div className="text-center py-16 bg-dark-card border border-dark-border">
-            <p className="text-cream-muted text-lg mb-4">No bookings yet.</p>
-            <Link href="/browse" className="text-gold font-medium hover:text-gold-light transition-colors">
-              Browse Chefs →
-            </Link>
-          </div>
+          <EmptyState
+            icon="📋"
+            title="No bookings yet"
+            description="Find the perfect private chef for your next event."
+            actionLabel="Browse Chefs"
+            actionHref="/browse"
+          />
         ) : (
           <div className="space-y-4">
             {bookings.map((b) => (

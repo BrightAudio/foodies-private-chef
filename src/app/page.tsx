@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <main>
+      <main id="main-content">
         {/* Hero */}
         <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
           {/* Background gradient effects */}

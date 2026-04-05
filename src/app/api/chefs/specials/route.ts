@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api-error-handler";
+import { sanitizeText } from "@/lib/sanitize";
 
 // GET /api/chefs/specials — get current chef's specials
 async function _GET(req: NextRequest) {
@@ -98,8 +99,8 @@ async function _POST(req: NextRequest) {
   const special = await prisma.chefSpecial.create({
     data: {
       chefProfileId: profile.id,
-      name: name.trim(),
-      description: description.trim(),
+      name: sanitizeText(name),
+      description: sanitizeText(description),
       price: price ? Number(price) : 0,
       imageUrl: imageUrl || null,
       isFeatured: !!isFeatured,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api-error-handler";
+import { sanitizeText } from "@/lib/sanitize";
 
 // POST /api/chefs/[id]/reviews — leave a review
 async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
       clientId: user.userId,
       chefProfileId,
       rating: Math.round(rating),
-      comment: comment || null,
+      comment: comment ? sanitizeText(comment) : null,
     },
   });
 
