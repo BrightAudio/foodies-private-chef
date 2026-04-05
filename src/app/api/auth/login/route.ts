@@ -4,6 +4,7 @@ import { verifyPassword, signToken } from "@/lib/auth";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
+  try {
   // Rate limit auth attempts
   const ip = getClientIP(req);
   const rl = await checkRateLimit(ip, "auth");
@@ -14,7 +15,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password } = await req.json();
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }); }
+  const { email, password } = body;
 
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
@@ -45,4 +48,8 @@ export async function POST(req: NextRequest) {
     token,
     user: { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: true },
   });
+  } catch (error) {
+    console.error("Login error:", error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
 }

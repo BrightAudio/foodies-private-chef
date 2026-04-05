@@ -7,6 +7,7 @@ import { randomBytes } from "crypto";
 import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
+  try {
   // Rate limit registration
   const ip = getClientIP(req);
   const rl = await checkRateLimit(ip, "auth");
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json();
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }); }
   const sanitized = sanitizeFields(body, ["name", "phone", "email"]);
   const { password, name, phone, role } = sanitized;
   const email = sanitized.email?.trim().toLowerCase();
@@ -71,4 +73,8 @@ export async function POST(req: NextRequest) {
     user: { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: false },
     message: "Account created. Please check your email to verify your account.",
   }, { status: 201 });
+  } catch (error) {
+    console.error("Registration error:", error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
 }

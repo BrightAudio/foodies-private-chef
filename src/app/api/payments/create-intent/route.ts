@@ -9,6 +9,7 @@ import { sendBookingCreatedToChef } from "@/lib/email";
 // Payment is authorized at booking time, captured only after job completion.
 // Platform fee is automatically deducted; chef receives payout via Stripe Connect.
 export async function POST(req: NextRequest) {
+  try {
   const user = getTokenFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Payments not configured" }, { status: 503 });
   }
 
-  const { chefProfileId, date, time, endTime, guestCount, specialRequests, address, items } = await req.json();
+  let body;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }); }
+  const { chefProfileId, date, time, endTime, guestCount, specialRequests, address, items } = body;
 
   if (!chefProfileId || !date || !time || !guestCount || !address) {
     return NextResponse.json({ error: "Missing required booking fields" }, { status: 400 });
@@ -112,4 +115,8 @@ export async function POST(req: NextRequest) {
     clientSecret: paymentIntent.client_secret,
     total: fees.total,
   });
+  } catch (error) {
+    console.error("Payment intent error:", error);
+    return NextResponse.json({ error: "Failed to create payment" }, { status: 500 });
+  }
 }

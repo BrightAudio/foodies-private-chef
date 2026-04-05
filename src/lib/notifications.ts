@@ -63,6 +63,16 @@ export async function notifyBookingCancelled(userId: string, cancellerName: stri
   });
 }
 
+export async function notifyBookingCompleted(clientUserId: string, chefName: string, bookingId: string) {
+  return createNotification({
+    userId: clientUserId,
+    type: "BOOKING_COMPLETED",
+    title: "Experience Complete",
+    body: `Your dining experience with Chef ${chefName} is complete. Leave a review!`,
+    data: { bookingId },
+  });
+}
+
 export async function notifyNewMessage(receiverId: string, senderName: string, bookingId: string) {
   return createNotification({
     userId: receiverId,

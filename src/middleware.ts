@@ -8,6 +8,14 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function rateLimit(ip: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
+
+  // Lazy cleanup: evict stale entries on access (edge-compatible, no setInterval)
+  if (rateLimitMap.size > 500) {
+    for (const [key, val] of rateLimitMap) {
+      if (now > val.resetAt) rateLimitMap.delete(key);
+    }
+  }
+
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
@@ -16,14 +24,6 @@ function rateLimit(ip: string, limit: number, windowMs: number): boolean {
   entry.count++;
   return entry.count <= limit;
 }
-
-// Clean up stale entries every 60s
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of rateLimitMap) {
-    if (now > val.resetAt) rateLimitMap.delete(key);
-  }
-}, 60_000);
 
 // Routes that require authentication
 const PROTECTED_PREFIXES = [

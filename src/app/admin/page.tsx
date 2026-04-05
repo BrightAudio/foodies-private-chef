@@ -94,6 +94,7 @@ interface AdminBooking {
   endTime: string | null;
   guestCount: number;
   total: number;
+  platformFee: number;
   address: string;
   generalArea: string | null;
   createdAt: string;
@@ -273,23 +274,41 @@ export default function AdminDashboard() {
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
-      const [chefsRes, usersRes, bookingsRes, trucksRes] = await Promise.all([
-        fetch("/api/admin/chefs", { headers }),
-        fetch("/api/admin/users", { headers }),
-        fetch("/api/admin/bookings", { headers }),
-        fetch("/api/admin/food-trucks", { headers }),
-      ]);
-
+      // Only fetch chefs initially (default tab), lazy-load others
+      const chefsRes = await fetch("/api/admin/chefs", { headers });
       if (chefsRes.status === 403) { window.location.href = "/"; return; }
-
       if (chefsRes.ok) setChefs(await chefsRes.json());
-      if (usersRes.ok) setUsers(await usersRes.json());
-      if (bookingsRes.ok) setBookings(await bookingsRes.json());
-      if (trucksRes.ok) setTrucks(await trucksRes.json());
     } catch (e) {
       console.error("Failed to fetch admin data:", e);
     }
     setLoading(false);
+  };
+
+  const fetchUsers = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin/users", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setUsers(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const fetchBookings = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin/bookings", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setBookings(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const fetchTrucks = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin/food-trucks", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setTrucks(await res.json());
+    } catch { /* ignore */ }
   };
 
   const fetchAnalytics = async () => {
@@ -320,6 +339,9 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (tab === "users" && users.length === 0) fetchUsers();
+    if (tab === "bookings" && bookings.length === 0) fetchBookings();
+    if (tab === "trucks" && trucks.length === 0) fetchTrucks();
     if (tab === "analytics" && !analytics) fetchAnalytics();
     if (tab === "audit") fetchAuditLogs();
     if (tab === "alerts") fetchExpiryAlerts();
@@ -368,7 +390,10 @@ export default function AdminDashboard() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(data),
     });
-    fetchAll();
+    // Refresh chefs list
+    const headers = { Authorization: `Bearer ${token}` };
+    const chefsRes = await fetch("/api/admin/chefs", { headers });
+    if (chefsRes.ok) setChefs(await chefsRes.json());
   };
 
   const updateTruck = async (id: string, data: { isFeatured?: boolean; isActive?: boolean }) => {
@@ -378,7 +403,7 @@ export default function AdminDashboard() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(data),
     });
-    fetchAll();
+    fetchTrucks();
   };
 
   const pendingBgChecks = chefs.filter((c) => c.bgCheckStatus === "PENDING").length;
@@ -419,7 +444,7 @@ export default function AdminDashboard() {
           </div>
           <div className="bg-dark-card border border-dark-border p-5">
             <p className="text-[10px] font-medium tracking-wider uppercase text-cream-muted">Platform Revenue</p>
-            <p className="text-2xl font-bold text-emerald-400 mt-1">${Math.round(totalRevenue * 0.3)}</p>
+            <p className="text-2xl font-bold text-emerald-400 mt-1">${bookings.filter(b => b.status === "COMPLETED").reduce((s, b) => s + (b.platformFee || 0), 0).toLocaleString()}</p>
           </div>
         </div>
 
