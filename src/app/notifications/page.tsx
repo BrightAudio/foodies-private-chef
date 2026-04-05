@@ -21,6 +21,13 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     fetchNotifications();
+
+    // Auto-refresh every 30s while page is visible
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchNotifications();
+    }, 30_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchNotifications = async () => {

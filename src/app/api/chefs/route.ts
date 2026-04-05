@@ -12,6 +12,7 @@ async function _GET(req: NextRequest) {
   const specialty = searchParams.get("specialty") || undefined;
   const cuisineType = searchParams.get("cuisineType") || searchParams.get("cuisine") || undefined;
   const tier = searchParams.get("tier") || undefined;
+  const search = searchParams.get("search") || searchParams.get("q") || undefined;
   const minRating = Number(searchParams.get("minRating")) || 0;
   const maxPrice = Number(searchParams.get("maxPrice")) || Infinity;
   const sortBy = searchParams.get("sort") || "rating"; // rating | price
@@ -19,7 +20,7 @@ async function _GET(req: NextRequest) {
   const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
 
   // Try cache for default browse (no filters)
-  const isDefaultBrowse = !specialty && !cuisineType && !tier && minRating === 0 && maxPrice === Infinity && sortBy === "rating" && page === 1;
+  const isDefaultBrowse = !specialty && !cuisineType && !tier && !search && minRating === 0 && maxPrice === Infinity && sortBy === "rating" && page === 1;
   const cacheKey = `chefs:browse:default:${limit}`;
   if (isDefaultBrowse) {
     const cached = await cacheGet(cacheKey);
@@ -36,6 +37,14 @@ async function _GET(req: NextRequest) {
       ...(cuisineType ? { cuisineType: { contains: cuisineType, mode: "insensitive" as const } } : {}),
       ...(tier ? { tier } : {}),
       ...(maxPrice < Infinity ? { hourlyRate: { lte: maxPrice } } : {}),
+      ...(search ? {
+        OR: [
+          { specialtyDish: { contains: search, mode: "insensitive" as const } },
+          { cuisineType: { contains: search, mode: "insensitive" as const } },
+          { bio: { contains: search, mode: "insensitive" as const } },
+          { user: { name: { contains: search, mode: "insensitive" as const } } },
+        ],
+      } : {}),
     },
     include: {
       user: { select: { name: true, id: true } },

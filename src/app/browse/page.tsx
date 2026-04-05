@@ -178,6 +178,7 @@ export default function BrowseChefs() {
     try {
       const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
       if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
+      if (search.trim()) params.set("search", search.trim());
       const res = await fetch(`/api/chefs?${params}`);
       const data = await res.json();
       setChefs(data.chefs || data);
@@ -190,6 +191,7 @@ export default function BrowseChefs() {
     try {
       const params = new URLSearchParams({ sort: sortBy, limit: "50", tier: selectedTier });
       if (eventDetails.cuisine) params.set("cuisine", eventDetails.cuisine);
+      if (search.trim()) params.set("search", search.trim());
       const res = await fetch(`/api/chefs?${params}`);
       const data = await res.json();
       setChefs(data.chefs || data);

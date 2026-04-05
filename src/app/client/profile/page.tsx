@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Image from "next/image";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { compressImage } from "@/lib/compressImage";
 
 const CUISINE_OPTIONS = [
   "Italian", "Japanese", "Mexican", "Indian", "French", "Mediterranean",
@@ -65,8 +66,9 @@ export default function ClientProfilePage() {
     if (!token) return;
     setUploadingPhoto(true);
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const res = await fetch("/api/uploads", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },

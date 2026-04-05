@@ -6,6 +6,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import toast from "react-hot-toast";
 import { getStoredUser } from "@/lib/stored-user";
 import Image from "next/image";
+import { compressImage } from "@/lib/compressImage";
 
 const TIER_INFO: Record<string, { label: string; emoji: string; color: string; badgeColor: string }> = {
   SOUS_CHEF: { label: "Sous Chef", emoji: "🔪", color: "text-blue-400", badgeColor: "bg-blue-500/10 text-blue-400 border border-blue-500/20" },
@@ -352,8 +353,9 @@ export default function ChefDashboard() {
     if (!token) return;
     setGalleryUploading(true);
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const uploadRes = await fetch("/api/uploads", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
       if (!uploadRes.ok) return;
       const { url } = await uploadRes.json();
@@ -479,8 +481,9 @@ export default function ChefDashboard() {
   const handleInsuranceFileUpload = async (file: File) => {
     const token = localStorage.getItem("token");
     if (!token) return;
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", compressed);
     try {
       const res = await fetch("/api/uploads", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
       if (res.ok) {

@@ -112,7 +112,9 @@ export default function Navbar() {
       } catch { /* ignore */ }
     };
     fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchUnread();
+    }, 15000);
     return () => clearInterval(interval);
   }, [user]);
 
