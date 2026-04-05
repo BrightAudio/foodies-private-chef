@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import Image from "next/image";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CUISINE_OPTIONS = [
@@ -116,9 +117,11 @@ export default function ClientProfilePage() {
           <p className="text-xs font-medium tracking-wider uppercase text-cream-muted mb-3">Profile Photo</p>
           <div className="flex items-center gap-5">
             {profileImageUrl ? (
-              <img
+              <Image
                 src={profileImageUrl}
                 alt="Profile"
+                width={80}
+                height={80}
                 className="w-20 h-20 rounded-full object-cover border-2 border-gold/30"
               />
             ) : (

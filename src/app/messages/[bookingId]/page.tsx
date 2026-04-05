@@ -27,6 +27,7 @@ export default function MessagesPage({ params }: { params: Promise<{ bookingId: 
     // Poll for new messages every 5 seconds
     const interval = setInterval(fetchMessages, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

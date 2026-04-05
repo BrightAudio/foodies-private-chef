@@ -263,6 +263,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getToken = () => {
@@ -349,6 +350,7 @@ export default function AdminDashboard() {
     if (tab === "audit") fetchAuditLogs();
     if (tab === "alerts") fetchExpiryAlerts();
     if (tab === "incidents") fetchIncidents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   const fetchIncidents = async () => {
@@ -412,7 +414,7 @@ export default function AdminDashboard() {
   const pendingBgChecks = chefs.filter((c) => c.bgCheckStatus === "PENDING").length;
   const pendingApprovals = chefs.filter((c) => !c.isApproved).length;
   const activeBookings = bookings.filter((b) => b.status === "CONFIRMED").length;
-  const totalRevenue = bookings
+  const _totalRevenue = bookings
     .filter((b) => b.status === "COMPLETED")
     .reduce((sum, b) => sum + (b.total || 0), 0);
 

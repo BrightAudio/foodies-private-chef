@@ -42,7 +42,7 @@ export default function AppTutorial() {
 
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
-      if (payload.role === "CHEF") setRole("CHEF");
+      if (payload.role === "CHEF") setRole("CHEF"); // eslint-disable-line react-hooks/set-state-in-effect
       // Show if user hasn't seen tutorial yet
       const key = `tutorial_seen_${payload.userId}`;
       if (!localStorage.getItem(key)) {

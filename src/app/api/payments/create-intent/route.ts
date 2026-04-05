@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, calculateFees } from "@/lib/auth";
-import { stripe, isStripeEnabled, createEscrowPaymentIntent } from "@/lib/stripe";
+import { stripe as _stripe, isStripeEnabled, createEscrowPaymentIntent } from "@/lib/stripe";
 import { sendBookingCreatedToChef } from "@/lib/email";
 
 // POST /api/payments/create-intent
@@ -25,6 +25,16 @@ export async function POST(req: NextRequest) {
 
   if (!chefProfileId || !date || !time || !guestCount || !address) {
     return NextResponse.json({ error: "Missing required booking fields" }, { status: 400 });
+  }
+
+  // Validate date format and 24-hour minimum advance
+  const bookingDate = new Date(date);
+  if (isNaN(bookingDate.getTime())) {
+    return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+  }
+  const minBookingTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  if (bookingDate < minBookingTime) {
+    return NextResponse.json({ error: "Bookings must be at least 24 hours in advance" }, { status: 400 });
   }
 
   const chef = await prisma.chefProfile.findUnique({

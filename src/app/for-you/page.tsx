@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { trackInterest, extractDishKeywords, useScrollTracker } from "@/lib/tracking";
+import { trackInterest, extractDishKeywords, createScrollTracker } from "@/lib/tracking";
 
 interface FeedSpecial {
   id: string;
@@ -89,13 +89,13 @@ export default function ForYouPage() {
   }, []);
 
   useEffect(() => {
-    fetchFeed();
+    fetchFeed(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [fetchFeed]);
 
   // Track scroll depth on the feed (how far they scroll = engagement depth)
   useEffect(() => {
     if (loading || specials.length === 0) return;
-    const cleanup = useScrollTracker({});
+    const cleanup = createScrollTracker({});
     return cleanup;
   }, [loading, specials.length]);
 

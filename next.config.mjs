@@ -5,6 +5,7 @@ const nextConfig = {
       { protocol: "https", hostname: "*.amazonaws.com" },
       { protocol: "https", hostname: "*.vercel.app" },
       { protocol: "https", hostname: "*.stripe.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   async headers() {
@@ -18,7 +19,7 @@ const nextConfig = {
           { key: "X-DNS-Prefetch-Control", value: "on" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: *.amazonaws.com *.vercel.app; connect-src 'self' api.stripe.com; frame-src js.stripe.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: *.amazonaws.com *.vercel.app images.unsplash.com; connect-src 'self' api.stripe.com; frame-src js.stripe.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" },
         ],
       },
     ];

@@ -93,7 +93,7 @@ export function extractDishKeywords(text: string): string[] {
 
 // ===== Dwell Time Tracker (like Facebook's time-on-content) =====
 
-export function useDwellTracker(signal: {
+export function createDwellTracker(signal: {
   chefProfileId?: string;
   cuisineType?: string;
 }) {
@@ -127,7 +127,7 @@ export function useDwellTracker(signal: {
 
 // ===== Scroll Depth Tracker (engagement depth like Facebook) =====
 
-export function useScrollTracker(signal: {
+export function createScrollTracker(signal: {
   chefProfileId?: string;
   cuisineType?: string;
 }) {

@@ -159,9 +159,10 @@ export default function BrowseChefs() {
 
     // Validate form
     const errors: Record<string, string> = {};
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     if (!eventDetails.date) errors.date = "Date is required";
-    else if (eventDetails.date < today) errors.date = "Date cannot be in the past";
+    else if (eventDetails.date < tomorrow) errors.date = "Must book at least 24 hours in advance";
     if (!eventDetails.time) errors.time = "Time is required";
     if (!eventDetails.guests) errors.guests = "Guest count is required";
     else if (Number(eventDetails.guests) < 1 || Number(eventDetails.guests) > 100) errors.guests = "Guest count must be 1-100";
@@ -298,7 +299,7 @@ export default function BrowseChefs() {
                   <input
                     type="date"
                     required
-                    min={new Date().toISOString().split("T")[0]}
+                    min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
                     value={eventDetails.date}
                     onChange={(e) => { setEventDetails({ ...eventDetails, date: e.target.value }); setEventErrors((p) => { const n = { ...p }; delete n.date; return n; }); }}
                     className={`w-full border rounded-none px-4 py-3 bg-dark-card text-cream focus:border-gold ${eventErrors.date ? "border-red-500" : "border-dark-border"}`}

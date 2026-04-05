@@ -186,6 +186,7 @@ export default function ChefDashboard() {
     fetchLegalTerms();
     fetchSpecials();
     fetchDishRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchDishRequests = async () => {

@@ -70,6 +70,7 @@ export default function ClientBookings() {
     if (!localStorage.getItem("token")) { window.location.href = "/login"; return; }
     fetchBookings();
     fetchDishRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

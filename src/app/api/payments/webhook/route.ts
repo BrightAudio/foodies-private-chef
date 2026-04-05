@@ -201,7 +201,8 @@ export async function POST(req: NextRequest) {
     }
 
     default:
-      // Unhandled event type — log for debugging
+      // Unhandled event type
+      // eslint-disable-next-line no-console
       console.log(`Unhandled Stripe event: ${event.type}`);
   }
 

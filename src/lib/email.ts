@@ -21,6 +21,7 @@ function isEmailEnabled(): boolean {
 
 async function send(to: string, subject: string, html: string) {
   if (!isEmailEnabled()) {
+    // eslint-disable-next-line no-console
     console.log(`[Email disabled] To: ${to} | Subject: ${subject}`);
     return;
   }

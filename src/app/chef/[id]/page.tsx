@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import StarRating from "@/components/StarRating";
-import { trackInterest, extractDishKeywords, useDwellTracker, useScrollTracker, trackReturnVisit } from "@/lib/tracking";
+import { trackInterest, extractDishKeywords, createDwellTracker, createScrollTracker, trackReturnVisit } from "@/lib/tracking";
 
 const StripePayment = dynamic(() => import("@/components/StripePayment"), { ssr: false });
 
@@ -83,14 +83,14 @@ export default function ChefProfilePage() {
   // Dwell time — fires when user leaves page (like Facebook time-on-content)
   useEffect(() => {
     if (!chef) return;
-    const cleanup = useDwellTracker({ chefProfileId: chef.id, cuisineType: chef.cuisineType || undefined });
+    const cleanup = createDwellTracker({ chefProfileId: chef.id, cuisineType: chef.cuisineType || undefined });
     return cleanup;
   }, [chef]);
 
   // Scroll depth — fires at 25% milestones
   useEffect(() => {
     if (!chef) return;
-    const cleanup = useScrollTracker({ chefProfileId: chef.id, cuisineType: chef.cuisineType || undefined });
+    const cleanup = createScrollTracker({ chefProfileId: chef.id, cuisineType: chef.cuisineType || undefined });
     return cleanup;
   }, [chef]);
 

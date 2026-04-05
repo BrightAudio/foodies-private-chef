@@ -1,17 +1,17 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import FeaturedTrucks from "@/components/FeaturedTrucks";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
   usePageTitle("");
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
-  useEffect(() => {
+  const [user] = useState<{ name: string; role: string } | null>(() => {
+    if (typeof window === "undefined") return null;
     const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
-  }, []);
+    return stored ? JSON.parse(stored) : null;
+  });
   return (
     <>
       <Navbar />
