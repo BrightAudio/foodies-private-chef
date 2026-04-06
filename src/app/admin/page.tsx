@@ -171,7 +171,7 @@ const roleColors: Record<string, string> = {
   ADMIN: "text-purple-400 bg-purple-500/10",
 };
 
-type Tab = "chefs" | "users" | "bookings" | "trucks" | "analytics" | "audit" | "alerts" | "incidents" | "support";
+type Tab = "chefs" | "users" | "bookings" | "trucks" | "analytics" | "audit" | "alerts" | "incidents" | "support" | "stripe";
 
 interface AnalyticsData {
   overview: { totalUsers: number; totalChefs: number; approvedChefs: number; totalBookings: number; completedBookings: number; cancelledBookings: number; completionRate: number; recentUsers: number; pendingVerifications: number };
@@ -249,6 +249,9 @@ export default function AdminDashboard() {
   const [locationEvidence, setLocationEvidence] = useState<{ checkins: { latitude: number; longitude: number; accuracy: number | null; checkinType: string; createdAt: string }[]; summary: { totalCheckins: number; firstCheckin: string; lastCheckin: string; durationMinutes: number; arrivalRecorded: boolean; departureRecorded: boolean } | null } | null>(null);
   const [locationBookingId, setLocationBookingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Stripe test card state
+  const [testCardLoading, setTestCardLoading] = useState(false);
+  const [testCardResult, setTestCardResult] = useState<{ success?: boolean; message?: string; card?: { id: string; last4: string; brand: string; expMonth: number; expYear: number; status: string; budget: number }; details?: { number: string; cvc: string; expMonth: number; expYear: number }; error?: string; hint?: string } | null>(null);
   const [expandedChef, setExpandedChef] = useState<string | null>(null);
   const [chefSection, setChefSection] = useState<Record<string, Set<string>>>({});
 
@@ -514,6 +517,7 @@ export default function AdminDashboard() {
             { key: "incidents" as Tab, label: "Incidents", badge: incidents.filter(i => i.status === "OPEN").length > 0 ? incidents.filter(i => i.status === "OPEN").length : null },
             { key: "alerts" as Tab, label: "Alerts", badge: expiryAlerts.length > 0 ? expiryAlerts.length : null },
             { key: "support" as Tab, label: "Support", badge: supportChats.filter(c => c.status === "OPEN").length > 0 ? supportChats.filter(c => c.status === "OPEN").length : null },
+            { key: "stripe" as Tab, label: "Stripe Tools", badge: null },
           ]).map((t) => (
             <button
               key={t.key}
@@ -1732,6 +1736,80 @@ export default function AdminDashboard() {
                   <p className="text-cream-muted">Select a chat to respond.</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Stripe Tools Tab */}
+        {!loading && tab === "stripe" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-cream">Stripe Issuing Test</h2>
+            <p className="text-cream-muted text-sm">Create a test virtual card to verify Stripe Issuing is configured correctly. No chef or booking required.</p>
+            <div className="bg-dark-card border border-dark-border p-6 max-w-lg space-y-4">
+              <button
+                type="button"
+                disabled={testCardLoading}
+                onClick={async () => {
+                  setTestCardLoading(true);
+                  setTestCardResult(null);
+                  try {
+                    const token = document.cookie.split("; ").find(r => r.startsWith("token="))?.split("=")[1];
+                    const res = await fetch("/api/grocery-cards", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ test: true, name: "Admin Test", budget: 25 }),
+                    });
+                    const data = await res.json();
+                    setTestCardResult(data);
+                  } catch {
+                    setTestCardResult({ error: "Network error" });
+                  } finally {
+                    setTestCardLoading(false);
+                  }
+                }}
+                className="px-6 py-3 bg-gold text-dark font-bold uppercase tracking-wider text-sm hover:bg-gold-light disabled:opacity-50"
+              >
+                {testCardLoading ? "Creating..." : "Create Test Card ($25)"}
+              </button>
+
+              {testCardResult && (
+                <div className={`p-4 border ${testCardResult.error ? "border-red-500/30 bg-red-500/5" : "border-emerald-500/30 bg-emerald-500/5"}`}>
+                  {testCardResult.error ? (
+                    <>
+                      <p className="text-red-400 font-medium">{testCardResult.error}</p>
+                      {testCardResult.hint && <p className="text-cream-muted text-sm mt-2">{testCardResult.hint}</p>}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-emerald-400 font-medium mb-3">{testCardResult.message}</p>
+                      {testCardResult.card && (
+                        <div className="space-y-1 text-sm text-cream">
+                          <p>Card ID: <span className="text-gold font-mono">{testCardResult.card.id}</span></p>
+                          <p>Last 4: <span className="font-mono">{testCardResult.card.last4}</span></p>
+                          <p>Status: <span className="text-emerald-400">{testCardResult.card.status}</span></p>
+                          <p>Budget: <span className="text-gold">${testCardResult.card.budget}</span></p>
+                        </div>
+                      )}
+                      {testCardResult.details && (
+                        <div className="mt-3 space-y-1 text-sm text-cream border-t border-dark-border pt-3">
+                          <p>Card Number: <span className="font-mono text-gold">{testCardResult.details.number}</span></p>
+                          <p>CVC: <span className="font-mono">{testCardResult.details.cvc}</span></p>
+                          <p>Expires: {testCardResult.details.expMonth}/{testCardResult.details.expYear}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div className="text-xs text-cream-muted space-y-1 border-t border-dark-border pt-4">
+                <p>Prerequisites:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>Stripe Issuing must be enabled on your account</li>
+                  <li>Your Issuing balance must be funded (or use test mode with sk_test_*)</li>
+                  <li><a href="https://dashboard.stripe.com/issuing/overview" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Open Stripe Issuing Dashboard →</a></li>
+                </ul>
+              </div>
             </div>
           </div>
         )}

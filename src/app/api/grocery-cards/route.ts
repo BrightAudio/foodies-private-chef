@@ -137,6 +137,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/grocery-cards — create a card (admin only, or via grocery-list fund flow)
 // Normal flow: chef creates grocery list → AI estimates → client approves → fund action creates card
+// Admin can also create a standalone test card with { test: true, name, email, budget }
 export async function POST(req: NextRequest) {
   const user = getTokenFromRequest(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -145,7 +146,62 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { bookingId, budget, approvedItems } = body;
+  const { bookingId, budget, approvedItems, test } = body;
+
+  // Admin-only: create a standalone test card (no chef/booking required)
+  if (test) {
+    if (!stripe) {
+      return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
+    }
+    const testName = sanitizeText(body.name || "Test Cardholder");
+    const testEmail = sanitizeText(body.email || user.email);
+    const testBudget = parseFloat(String(budget || 50));
+    if (testBudget <= 0 || testBudget > 500) {
+      return NextResponse.json({ error: "Test budget must be between $0.01 and $500" }, { status: 400 });
+    }
+    try {
+      const cardholder = await createIssuingCardholder(
+        testName,
+        testEmail,
+        null,
+        { line1: "1 Test Street", city: "Lansing", state: "MI", postal_code: "48933", country: "US" }
+      );
+      const budgetCents = Math.round(testBudget * 100);
+      const stripeCard = await createIssuingCard(cardholder.id, budgetCents, {
+        platform: "foodies",
+        testCard: "true",
+      });
+      const details = await retrieveIssuingCardDetails(stripeCard.id);
+      return NextResponse.json({
+        success: true,
+        message: "Test card created successfully. Stripe Issuing is working!",
+        card: {
+          id: stripeCard.id,
+          last4: stripeCard.last4,
+          brand: stripeCard.brand,
+          expMonth: stripeCard.exp_month,
+          expYear: stripeCard.exp_year,
+          status: stripeCard.status,
+          type: stripeCard.type,
+          cardholderId: cardholder.id,
+          budget: testBudget,
+        },
+        details: {
+          number: details.number,
+          cvc: details.cvc,
+          expMonth: details.exp_month,
+          expYear: details.exp_year,
+        },
+      }, { status: 201 });
+    } catch (err: unknown) {
+      console.error("Test card creation error:", err);
+      const message = err instanceof Error ? err.message : "Failed to create test card";
+      return NextResponse.json({
+        error: message,
+        hint: "Make sure Stripe Issuing is enabled on your account. Visit https://dashboard.stripe.com/issuing/overview to apply.",
+      }, { status: 500 });
+    }
+  }
 
   if (!bookingId || !budget || budget <= 0) {
     return NextResponse.json({ error: "bookingId and positive budget are required" }, { status: 400 });
