@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     if (card.chefProfile.userId !== user.userId && user.role !== "ADMIN") {
       return NextResponse.json({ error: "Only the card's chef can provision to wallet" }, { status: 403 });
     }
-    if (!card.stripeCardId) return NextResponse.json({ error: "No Stripe card linked" }, { status: 400 });
+    if (!card.stripeCardId) return NextResponse.json({ error: "No virtual card linked" }, { status: 400 });
     try {
       const key = await createIssuingEphemeralKey(card.stripeCardId, nonce);
       return NextResponse.json(key);
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     if (card.chefProfile.userId !== user.userId && user.role !== "ADMIN") {
       return NextResponse.json({ error: "Only the chef can view card details" }, { status: 403 });
     }
-    if (!card.stripeCardId) return NextResponse.json({ error: "No Stripe card linked" }, { status: 400 });
+    if (!card.stripeCardId) return NextResponse.json({ error: "No virtual card linked" }, { status: 400 });
     try {
       const details = await retrieveIssuingCardDetails(card.stripeCardId);
       return NextResponse.json(details);
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
   // Admin-only: create a standalone test card (no chef/booking required)
   if (test) {
     if (!stripe) {
-      return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
+      return NextResponse.json({ error: "Payment system is not configured" }, { status: 503 });
     }
     const testName = sanitizeText(body.name || "Test Cardholder");
     const testEmail = sanitizeText(body.email || user.email);
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       const details = await retrieveIssuingCardDetails(stripeCard.id);
       return NextResponse.json({
         success: true,
-        message: "Test card created successfully. Stripe Issuing is working!",
+        message: "Test card created successfully. Virtual card issuing is working!",
         card: {
           id: stripeCard.id,
           last4: stripeCard.last4,
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       const message = err instanceof Error ? err.message : "Failed to create test card";
       return NextResponse.json({
         error: message,
-        hint: "Make sure Stripe Issuing is enabled on your account. Visit https://dashboard.stripe.com/issuing/overview to apply.",
+        hint: "Make sure card issuing is enabled on your payment account. Visit https://dashboard.stripe.com/issuing/overview to set up.",
       }, { status: 500 });
     }
   }
@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bookingId and positive budget are required" }, { status: 400 });
   }
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
+    return NextResponse.json({ error: "Payment system is not configured" }, { status: 503 });
   }
 
   const booking = await prisma.booking.findUnique({
@@ -281,7 +281,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(card, { status: 201 });
   } catch (err: unknown) {
     console.error("Stripe Issuing error:", err);
-    const message = err instanceof Error ? err.message : "Failed to create Stripe Issuing card";
+    const message = err instanceof Error ? err.message : "Failed to create virtual grocery card";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

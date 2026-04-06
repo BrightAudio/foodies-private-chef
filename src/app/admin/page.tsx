@@ -517,7 +517,7 @@ export default function AdminDashboard() {
             { key: "incidents" as Tab, label: "Incidents", badge: incidents.filter(i => i.status === "OPEN").length > 0 ? incidents.filter(i => i.status === "OPEN").length : null },
             { key: "alerts" as Tab, label: "Alerts", badge: expiryAlerts.length > 0 ? expiryAlerts.length : null },
             { key: "support" as Tab, label: "Support", badge: supportChats.filter(c => c.status === "OPEN").length > 0 ? supportChats.filter(c => c.status === "OPEN").length : null },
-            { key: "stripe" as Tab, label: "Stripe Tools", badge: null },
+            { key: "stripe" as Tab, label: "Card Tools", badge: null },
           ]).map((t) => (
             <button
               key={t.key}
@@ -1740,11 +1740,11 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Stripe Tools Tab */}
+        {/* Card Tools Tab */}
         {!loading && tab === "stripe" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-cream">Stripe Issuing Test</h2>
-            <p className="text-cream-muted text-sm">Create a test virtual card to verify Stripe Issuing is configured correctly. No chef or booking required.</p>
+            <h2 className="text-xl font-bold text-cream">Virtual Card Test</h2>
+            <p className="text-cream-muted text-sm">Create a test virtual card to verify card issuing is configured correctly. No chef or booking required.</p>
             <div className="bg-dark-card border border-dark-border p-6 max-w-lg space-y-4">
               <button
                 type="button"
@@ -1805,9 +1805,9 @@ export default function AdminDashboard() {
               <div className="text-xs text-cream-muted space-y-1 border-t border-dark-border pt-4">
                 <p>Prerequisites:</p>
                 <ul className="list-disc list-inside space-y-0.5">
-                  <li>Stripe Issuing must be enabled on your account</li>
-                  <li>Your Issuing balance must be funded (or use test mode with sk_test_*)</li>
-                  <li><a href="https://dashboard.stripe.com/issuing/overview" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Open Stripe Issuing Dashboard →</a></li>
+                  <li>Card issuing must be enabled on your payment account</li>
+                  <li>Your issuing balance must be funded (or use test mode)</li>
+                  <li><a href="https://dashboard.stripe.com/issuing/overview" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Open Issuing Dashboard →</a></li>
                 </ul>
               </div>
             </div>
