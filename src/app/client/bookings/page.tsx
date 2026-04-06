@@ -67,6 +67,15 @@ export default function ClientBookings() {
   const [approvalNote, setApprovalNote] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
 
+  // Budget extension state
+  interface GroceryCardData {
+    id: string; bookingId: string; budget: number; spent: number; status: string;
+    chefProfile: { user: { name: string } };
+  }
+  const [groceryCards, setGroceryCards] = useState<Record<string, GroceryCardData>>({});
+  const [extensionSlider, setExtensionSlider] = useState<string | null>(null);
+  const [sliderAmount, setSliderAmount] = useState(25);
+
   // Dish request state
   interface DishReq {
     id: string;
@@ -280,6 +289,43 @@ export default function ClientBookings() {
         toast.error(data.error || "Failed to reject");
       }
     } finally { setSubmitting(false); }
+  };
+
+  // Grocery card functions for budget extension
+  const fetchGroceryCard = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/grocery-cards?bookingId=${bookingId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const cards = await res.json();
+        if (cards.length > 0) setGroceryCards(prev => ({ ...prev, [bookingId]: cards[0] }));
+      }
+    } catch { /* silent */ }
+  };
+
+  const extendBudget = async (cardId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    if (sliderAmount <= 0) { toast.error("Select an amount to extend"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/grocery-cards", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cardId, action: "extendBudget", extensionAmount: sliderAmount }),
+      });
+      if (res.ok) {
+        toast.success(`Budget extended by $${sliderAmount.toFixed(2)}! Chef can continue shopping immediately.`);
+        setExtensionSlider(null);
+        setSliderAmount(25);
+        fetchGroceryCard(bookingId);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to extend budget");
+      }
+    } catch { toast.error("Network error"); }
+    finally { setSubmitting(false); }
   };
 
   const statusColors: Record<string, string> = {
@@ -551,6 +597,55 @@ export default function ClientBookings() {
                           }`}>{groceryLists[b.id].status}</span>
                         </div>
                         <p className="text-xs text-cream-muted">Estimated: <strong className="text-gold">${groceryLists[b.id].estimatedTotal.toFixed(2)}</strong> — funded from chef&apos;s earnings</p>
+
+                        {/* Budget Tracking & Extension for FUNDED cards */}
+                        {(groceryLists[b.id].status === "FUNDED" || groceryLists[b.id].status === "APPROVED") && (
+                          <>
+                            {!groceryCards[b.id] ? (
+                              <button onClick={() => fetchGroceryCard(b.id)} className="text-xs text-gold hover:text-gold-light transition-colors">
+                                View Budget Details
+                              </button>
+                            ) : (
+                              <div className="border-t border-dark-border pt-3 space-y-3">
+                                <div className="flex items-center gap-4 text-xs">
+                                  <span>Budget: <strong className="text-gold">${groceryCards[b.id].budget.toFixed(2)}</strong></span>
+                                  <span>Spent: <strong>${groceryCards[b.id].spent.toFixed(2)}</strong></span>
+                                  <span>Remaining: <strong className={groceryCards[b.id].budget - groceryCards[b.id].spent <= 0 ? "text-red-400" : "text-emerald-400"}>${(groceryCards[b.id].budget - groceryCards[b.id].spent).toFixed(2)}</strong></span>
+                                </div>
+                                {/* Progress bar */}
+                                <div className="w-full h-1.5 bg-dark-border overflow-hidden">
+                                  <div className={`h-full transition-all ${groceryCards[b.id].spent / groceryCards[b.id].budget > 0.9 ? "bg-red-500" : groceryCards[b.id].spent / groceryCards[b.id].budget > 0.7 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, (groceryCards[b.id].spent / groceryCards[b.id].budget) * 100)}%` }} />
+                                </div>
+
+                                {/* Extension slider */}
+                                {extensionSlider === b.id ? (
+                                  <div className="bg-dark border border-gold/20 p-4 space-y-3">
+                                    <p className="text-xs font-bold text-gold uppercase tracking-wider">Extend Grocery Budget</p>
+                                    <p className="text-xs text-cream-muted">Add more funds to your chef&apos;s Foodies Pay card instantly. This comes from the chef&apos;s booking earnings.</p>
+                                    <div className="space-y-2">
+                                      <input type="range" min={5} max={200} step={5} value={sliderAmount} onChange={(e) => setSliderAmount(Number(e.target.value))} className="w-full accent-gold" />
+                                      <div className="flex justify-between text-xs text-cream-muted">
+                                        <span>$5</span>
+                                        <span className="text-lg font-bold text-gold">${sliderAmount.toFixed(2)}</span>
+                                        <span>$200</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                      <button onClick={() => extendBudget(groceryCards[b.id].id, b.id)} disabled={submitting} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">
+                                        {submitting ? "Extending..." : `Extend +$${sliderAmount.toFixed(2)}`}
+                                      </button>
+                                      <button onClick={() => { setExtensionSlider(null); setSliderAmount(25); }} className="text-cream-muted text-sm hover:text-cream transition-colors">Cancel</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setExtensionSlider(b.id)} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
+                                    📈 Extend Grocery Budget
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

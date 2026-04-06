@@ -292,7 +292,7 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { cardId, action, amount, newBudget } = body;
+  const { cardId, action, amount, newBudget, extensionAmount, extensionReason } = body;
 
   if (!cardId || !action) {
     return NextResponse.json({ error: "cardId and action are required" }, { status: 400 });
@@ -301,8 +301,8 @@ export async function PATCH(req: NextRequest) {
   const card = await prisma.groceryCard.findUnique({
     where: { id: cardId },
     include: {
-      booking: { select: { clientId: true } },
-      chefProfile: { select: { userId: true } },
+      booking: { select: { clientId: true, date: true, client: { select: { name: true, email: true, phone: true } } } },
+      chefProfile: { select: { userId: true, user: { select: { name: true } } } },
     },
   });
   if (!card) return NextResponse.json({ error: "Card not found" }, { status: 404 });
@@ -381,7 +381,50 @@ export async function PATCH(req: NextRequest) {
       await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Foodies Pay Budget Updated", body: `Your Foodies Pay card budget has been updated to $${parseFloat(String(newBudget)).toFixed(2)}.`, data: { link: "/chef/dashboard" } });
       return NextResponse.json(updated);
     }
+    case "requestExtension": {
+      // Chef requests a budget extension from the client
+      if (!isChef && !isAdmin) return NextResponse.json({ error: "Only the chef can request an extension" }, { status: 403 });
+      if (card.status !== "ACTIVE" && card.status !== "DEPLETED") return NextResponse.json({ error: "Card must be active or depleted" }, { status: 400 });
+      const reqAmount = parseFloat(String(extensionAmount || 0));
+      if (reqAmount <= 0 || reqAmount > 1000) return NextResponse.json({ error: "Extension amount must be between $0.01 and $1000" }, { status: 400 });
+      const reason = extensionReason ? sanitizeText(String(extensionReason)).slice(0, 500) : "Additional groceries needed";
+      await createNotification({
+        userId: card.booking.clientId,
+        type: "GROCERY_CARD",
+        title: "Budget Extension Requested",
+        body: `Chef ${card.chefProfile.user.name} is requesting a $${reqAmount.toFixed(2)} budget extension for groceries. Reason: ${reason}`,
+        data: { link: "/client/bookings", cardId, requestedAmount: reqAmount.toFixed(2), reason },
+      });
+      return NextResponse.json({ success: true, message: "Extension request sent to client", requestedAmount: reqAmount });
+    }
+    case "extendBudget": {
+      // Client extends the budget (instant — updates Stripe spending limit immediately)
+      if (!isClient && !isAdmin) return NextResponse.json({ error: "Only the client can extend the budget" }, { status: 403 });
+      const extAmount = parseFloat(String(extensionAmount || 0));
+      if (extAmount <= 0 || extAmount > 1000) return NextResponse.json({ error: "Extension must be between $0.01 and $1000" }, { status: 400 });
+      const newTotal = card.budget + extAmount;
+      // Update spending limit on Stripe instantly
+      if (card.stripeCardId) {
+        try {
+          const newLimitCents = Math.round(newTotal * 100);
+          await updateIssuingCardSpendingLimit(card.stripeCardId, newLimitCents);
+        } catch (err) { console.error("Stripe limit update error:", err); }
+      }
+      const updated = await prisma.groceryCard.update({
+        where: { id: cardId },
+        data: { budget: newTotal, status: card.status === "DEPLETED" ? "ACTIVE" : card.status },
+      });
+      // Notify chef immediately
+      await createNotification({
+        userId: card.chefProfile.userId,
+        type: "GROCERY_CARD",
+        title: "Budget Extended!",
+        body: `Your client added $${extAmount.toFixed(2)} to your Foodies Pay card. New budget: $${newTotal.toFixed(2)}. You can continue shopping immediately.`,
+        data: { link: "/chef/dashboard" },
+      });
+      return NextResponse.json(updated);
+    }
     default:
-      return NextResponse.json({ error: "Invalid action. Use: spend, freeze, unfreeze, close, updateBudget" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid action. Use: spend, freeze, unfreeze, close, updateBudget, requestExtension, extendBudget" }, { status: 400 });
   }
 }

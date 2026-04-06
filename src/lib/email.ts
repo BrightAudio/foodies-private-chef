@@ -196,3 +196,45 @@ export async function sendPaymentReceiptEmail(opts: {
     `
   );
 }
+
+export async function sendGroceryPurchaseReceipt(opts: {
+  clientEmail: string;
+  clientName: string;
+  chefName: string;
+  merchantName: string;
+  amount: number;
+  cardLast4: string;
+  budgetTotal: number;
+  budgetSpent: number;
+  budgetRemaining: number;
+  bookingDate: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  await send(
+    opts.clientEmail,
+    `Foodies Pay Purchase — $${opts.amount.toFixed(2)} at ${opts.merchantName}`,
+    `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#0B0B0B;color:#F5F0E8;padding:40px;">
+      <h1 style="color:#C8A96A;font-size:24px;margin:0 0 24px;">Foodies Pay Purchase Receipt</h1>
+      <p>Hello ${opts.clientName},</p>
+      <p>Chef ${opts.chefName} made a grocery purchase for your upcoming booking.</p>
+      <table style="width:100%;margin:24px 0;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Store</td><td style="padding:8px 0;text-align:right;">${opts.merchantName}</td></tr>
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Amount</td><td style="padding:8px 0;text-align:right;font-weight:bold;color:#C8A96A;">$${opts.amount.toFixed(2)}</td></tr>
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Card</td><td style="padding:8px 0;text-align:right;">****${opts.cardLast4}</td></tr>
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Booking Date</td><td style="padding:8px 0;text-align:right;">${opts.bookingDate}</td></tr>
+        <tr style="border-top:1px solid #333;"><td style="padding:12px 0;color:#B8B0A2;">Budget</td><td style="padding:12px 0;text-align:right;">$${opts.budgetTotal.toFixed(2)}</td></tr>
+        <tr><td style="padding:8px 0;color:#B8B0A2;">Total Spent</td><td style="padding:8px 0;text-align:right;">$${opts.budgetSpent.toFixed(2)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:bold;color:#C8A96A;">Remaining</td><td style="padding:8px 0;text-align:right;font-weight:bold;color:#C8A96A;">$${opts.budgetRemaining.toFixed(2)}</td></tr>
+      </table>
+      <p style="font-size:13px;color:#B8B0A2;">This purchase is funded from the chef's booking earnings — no extra charge to you.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${appUrl}/client/bookings" style="background:#C8A96A;color:#0B0B0B;padding:14px 32px;text-decoration:none;font-weight:bold;font-size:14px;letter-spacing:0.1em;text-transform:uppercase;">
+          View Booking
+        </a>
+      </div>
+      <p style="color:#B8B0A2;font-size:12px;margin-top:32px;">— The Foodies Team</p>
+    </div>
+    `
+  );
+}

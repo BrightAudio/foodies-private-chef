@@ -159,6 +159,9 @@ export default function ChefDashboard() {
   const [spendAmount, setSpendAmount] = useState<Record<string, string>>({});
   const [cardDetails, setCardDetails] = useState<Record<string, { number: string; exp_month: number; exp_year: number; cvc: string } | null>>({});
   const [cardDetailsLoading, setCardDetailsLoading] = useState<Record<string, boolean>>({});
+  const [extensionForm, setExtensionForm] = useState<string | null>(null); // bookingId
+  const [extensionAmount, setExtensionAmount] = useState("");
+  const [extensionReason, setExtensionReason] = useState("");
 
   // Grocery list state (new flow: chef creates list → AI estimates → client approves → card funded)
   interface GroceryListItem { name: string; quantity: string; unit: string; estimatedPrice?: number }
@@ -746,6 +749,30 @@ export default function ChefDashboard() {
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to fund card");
+      }
+    } finally { setGroceryListSubmitting(false); }
+  };
+
+  const requestExtension = async (cardId: string, bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const amt = parseFloat(extensionAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    setGroceryListSubmitting(true);
+    try {
+      const res = await fetch("/api/grocery-cards", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cardId, action: "requestExtension", extensionAmount: amt, extensionReason: extensionReason.trim() || undefined }),
+      });
+      if (res.ok) {
+        toast.success("Budget extension request sent to client!");
+        setExtensionForm(null);
+        setExtensionAmount("");
+        setExtensionReason("");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to send request");
       }
     } finally { setGroceryListSubmitting(false); }
   };
@@ -1554,6 +1581,30 @@ export default function ChefDashboard() {
                           <span>Spent: <strong>${groceryCards[b.id].spent.toFixed(2)}</strong></span>
                           <span>Remaining: <strong className="text-emerald-400">${(groceryCards[b.id].budget - groceryCards[b.id].spent).toFixed(2)}</strong></span>
                         </div>
+
+                        {/* Budget Extension Request */}
+                        {(groceryCards[b.id].status === "ACTIVE" || groceryCards[b.id].status === "DEPLETED") && (
+                          extensionForm === b.id ? (
+                            <div className="bg-dark border border-gold/20 p-4 space-y-3">
+                              <p className="text-xs font-bold text-gold uppercase tracking-wider">Request Budget Extension</p>
+                              <p className="text-xs text-cream-muted">Your client will be prompted to approve and extend your card budget instantly.</p>
+                              <div className="flex gap-2">
+                                <input type="number" min="1" step="0.01" placeholder="Amount needed ($)" value={extensionAmount} onChange={(e) => setExtensionAmount(e.target.value)} className="w-36 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                                <input type="text" placeholder="Reason (optional)" value={extensionReason} onChange={(e) => setExtensionReason(e.target.value)} className="flex-1 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                              </div>
+                              <div className="flex gap-3">
+                                <button onClick={() => requestExtension(groceryCards[b.id].id, b.id)} disabled={groceryListSubmitting} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">
+                                  {groceryListSubmitting ? "Sending..." : "Send Request"}
+                                </button>
+                                <button onClick={() => { setExtensionForm(null); setExtensionAmount(""); setExtensionReason(""); }} className="text-cream-muted text-sm hover:text-cream transition-colors">Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => setExtensionForm(b.id)} className="text-sm text-amber-400 hover:text-amber-300 transition-colors">
+                              {groceryCards[b.id].status === "DEPLETED" ? "⚠️ Budget Depleted — Request Extension" : "📈 Request Budget Extension"}
+                            </button>
+                          )
+                        )}
 
                         {/* Card Details (number, exp, cvc) */}
                         {groceryCards[b.id].stripeCardId && groceryCards[b.id].status === "ACTIVE" && (

@@ -252,6 +252,14 @@ export default function AdminDashboard() {
   // Stripe test card state
   const [testCardLoading, setTestCardLoading] = useState(false);
   const [testCardResult, setTestCardResult] = useState<{ success?: boolean; message?: string; card?: { id: string; last4: string; brand: string; expMonth: number; expYear: number; status: string; budget: number }; details?: { number: string; cvc: string; expMonth: number; expYear: number }; error?: string; hint?: string } | null>(null);
+
+  // Card assignment state
+  const [assignChefId, setAssignChefId] = useState("");
+  const [assignBookingId, setAssignBookingId] = useState("");
+  const [assignBudget, setAssignBudget] = useState("50");
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignResult, setAssignResult] = useState<{ error?: string; message?: string; card?: { id: string; last4: string; status: string; budget: number } } | null>(null);
+
   const [expandedChef, setExpandedChef] = useState<string | null>(null);
   const [chefSection, setChefSection] = useState<Record<string, Set<string>>>({});
 
@@ -1742,9 +1750,105 @@ export default function AdminDashboard() {
 
         {/* Card Tools Tab */}
         {!loading && tab === "stripe" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-cream">Foodies Pay Test</h2>
-            <p className="text-cream-muted text-sm">Create a test Foodies Pay card to verify card issuing is configured correctly. No chef or booking required.</p>
+          <div className="space-y-8">
+
+            {/* Quick Links */}
+            <div className="flex gap-4 flex-wrap">
+              <a href="https://dashboard.stripe.com/issuing/overview" target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 bg-gold text-dark font-bold uppercase tracking-wider text-sm hover:bg-gold-light transition-colors inline-flex items-center gap-2">
+                Open Issuing Dashboard →
+              </a>
+              <a href="https://dashboard.stripe.com/issuing/cards" target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 border border-gold/30 text-gold font-bold uppercase tracking-wider text-sm hover:bg-gold/10 transition-colors inline-flex items-center gap-2">
+                View All Cards →
+              </a>
+            </div>
+
+            {/* Issue Foodies Pay Card to Chef */}
+            <div>
+              <h2 className="text-xl font-bold text-cream mb-2">Issue Foodies Pay Card</h2>
+              <p className="text-cream-muted text-sm mb-4">Assign a virtual Foodies Pay card to a chef for a specific booking. The card will be funded from the chef&apos;s booking earnings.</p>
+              <div className="bg-dark-card border border-dark-border p-6 max-w-lg space-y-4">
+                <div>
+                  <label className="block text-xs text-cream-muted mb-1 uppercase tracking-wider">Chef</label>
+                  <select value={assignChefId} onChange={(e) => setAssignChefId(e.target.value)} className="w-full border border-dark-border bg-dark px-3 py-2 text-sm text-cream">
+                    <option value="">Select a chef...</option>
+                    {chefs.filter(c => c.isApproved).map(c => (
+                      <option key={c.id} value={c.id}>{c.user.name} — {c.tier} ({c.user.email})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-cream-muted mb-1 uppercase tracking-wider">Booking ID</label>
+                  <select value={assignBookingId} onChange={(e) => setAssignBookingId(e.target.value)} className="w-full border border-dark-border bg-dark px-3 py-2 text-sm text-cream">
+                    <option value="">Select a booking...</option>
+                    {bookings.filter(bk => ["ACCEPTED", "CONFIRMED", "PREPARING"].includes(bk.status) && (!assignChefId || bk.chefProfile.user.name === chefs.find(c => c.id === assignChefId)?.user.name)).map(bk => (
+                      <option key={bk.id} value={bk.id}>
+                        {new Date(bk.date).toLocaleDateString()} — {bk.chefProfile.user.name} → {bk.client.name} (${bk.total.toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-cream-muted mb-1 uppercase tracking-wider">Budget ($)</label>
+                  <input type="number" min="1" max="5000" step="0.01" value={assignBudget} onChange={(e) => setAssignBudget(e.target.value)} className="w-full border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
+                </div>
+                <button
+                  type="button"
+                  disabled={assignLoading || !assignChefId || !assignBookingId}
+                  onClick={async () => {
+                    setAssignLoading(true);
+                    setAssignResult(null);
+                    try {
+                      const token = document.cookie.split("; ").find(r => r.startsWith("token="))?.split("=")[1];
+                      const res = await fetch("/api/grocery-cards", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ bookingId: assignBookingId, budget: parseFloat(assignBudget) }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setAssignResult({ message: "Foodies Pay card issued successfully!", card: data });
+                        setAssignChefId(""); setAssignBookingId(""); setAssignBudget("50");
+                      } else {
+                        setAssignResult({ error: data.error || "Failed to issue card" });
+                      }
+                    } catch {
+                      setAssignResult({ error: "Network error" });
+                    } finally {
+                      setAssignLoading(false);
+                    }
+                  }}
+                  className="w-full px-6 py-3 bg-gold text-dark font-bold uppercase tracking-wider text-sm hover:bg-gold-light disabled:opacity-50"
+                >
+                  {assignLoading ? "Issuing..." : "Issue Foodies Pay Card"}
+                </button>
+
+                {assignResult && (
+                  <div className={`p-4 border ${assignResult.error ? "border-red-500/30 bg-red-500/5" : "border-emerald-500/30 bg-emerald-500/5"}`}>
+                    {assignResult.error ? (
+                      <p className="text-red-400 font-medium">{assignResult.error}</p>
+                    ) : (
+                      <>
+                        <p className="text-emerald-400 font-medium">{assignResult.message}</p>
+                        {assignResult.card && (
+                          <div className="mt-2 space-y-1 text-sm text-cream">
+                            <p>Card ID: <span className="text-gold font-mono">{assignResult.card.id}</span></p>
+                            <p>Budget: <span className="text-gold">${assignResult.card.budget}</span></p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-dark-border" />
+
+            {/* Test Card Section */}
+            <div>
+              <h2 className="text-xl font-bold text-cream mb-2">Test Card</h2>
+              <p className="text-cream-muted text-sm mb-4">Create a test Foodies Pay card to verify card issuing is configured correctly. No chef or booking required.</p>
             <div className="bg-dark-card border border-dark-border p-6 max-w-lg space-y-4">
               <button
                 type="button"
@@ -1810,6 +1914,7 @@ export default function AdminDashboard() {
                   <li><a href="https://dashboard.stripe.com/issuing/overview" target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">Open Issuing Dashboard →</a></li>
                 </ul>
               </div>
+            </div>
             </div>
           </div>
         )}

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { sendPaymentReceiptEmail } from "@/lib/email";
+import { sendPaymentReceiptEmail, sendGroceryPurchaseReceipt } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
 // POST /api/payments/webhook — Stripe webhook handler
 // Handles platform events (STRIPE_WEBHOOK_SECRET) and connected-account events (STRIPE_CONNECT_WEBHOOK_SECRET)
@@ -212,19 +213,53 @@ export async function POST(req: NextRequest) {
       const spentCents = Math.abs(txn.amount);
       const spentDollars = spentCents / 100;
       const stripeCardId = txn.card;
+      const merchantName = txn.merchant_data?.name || "Unknown Store";
 
       if (stripeCardId) {
         const card = await prisma.groceryCard.findFirst({
           where: { stripeCardId },
+          include: {
+            booking: { select: { clientId: true, date: true, client: { select: { name: true, email: true, phone: true } } } },
+            chefProfile: { select: { user: { select: { name: true } } } },
+          },
         });
         if (card && card.status === "ACTIVE") {
           const newSpent = card.spent + spentDollars;
+          const budgetRemaining = card.budget - newSpent;
           const status = newSpent >= card.budget ? "DEPLETED" : "ACTIVE";
           await prisma.groceryCard.update({
             where: { id: card.id },
             data: { spent: newSpent, status },
           });
-          console.log(`Issuing txn: card=${card.id}, amount=$${spentDollars}, merchant=${txn.merchant_data?.name || "unknown"}, total_spent=$${newSpent.toFixed(2)}`);
+
+          // Send purchase receipt to client via email
+          try {
+            await sendGroceryPurchaseReceipt({
+              clientEmail: card.booking.client.email,
+              clientName: card.booking.client.name,
+              chefName: card.chefProfile.user.name,
+              merchantName,
+              amount: spentDollars,
+              cardLast4: card.cardNumber.slice(-4),
+              budgetTotal: card.budget,
+              budgetSpent: newSpent,
+              budgetRemaining: Math.max(0, budgetRemaining),
+              bookingDate: new Date(card.booking.date).toLocaleDateString(),
+            });
+          } catch (emailErr) {
+            console.error("Failed to send grocery receipt:", emailErr);
+          }
+
+          // Notify client of purchase
+          await createNotification({
+            userId: card.booking.clientId,
+            type: "GROCERY_CARD",
+            title: `$${spentDollars.toFixed(2)} Purchase at ${merchantName}`,
+            body: `Chef ${card.chefProfile.user.name} spent $${spentDollars.toFixed(2)} at ${merchantName}. Remaining budget: $${Math.max(0, budgetRemaining).toFixed(2)}`,
+            data: { link: "/client/bookings" },
+          }).catch(console.error);
+
+          console.log(`Issuing txn: card=${card.id}, amount=$${spentDollars}, merchant=${merchantName}, total_spent=$${newSpent.toFixed(2)}`);
         }
       }
       break;
