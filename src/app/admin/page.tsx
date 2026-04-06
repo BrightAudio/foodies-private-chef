@@ -1798,7 +1798,7 @@ export default function AdminDashboard() {
                     setAssignLoading(true);
                     setAssignResult(null);
                     try {
-                      const token = document.cookie.split("; ").find(r => r.startsWith("token="))?.split("=")[1];
+                      const token = localStorage.getItem("token");
                       const res = await fetch("/api/grocery-cards", {
                         method: "POST",
                         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1857,7 +1857,7 @@ export default function AdminDashboard() {
                   setTestCardLoading(true);
                   setTestCardResult(null);
                   try {
-                    const token = document.cookie.split("; ").find(r => r.startsWith("token="))?.split("=")[1];
+                    const token = localStorage.getItem("token");
                     const res = await fetch("/api/grocery-cards", {
                       method: "POST",
                       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
