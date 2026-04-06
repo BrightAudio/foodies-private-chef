@@ -251,7 +251,7 @@ export default function ClientBookings() {
         body: JSON.stringify({ listId, action: "approve", clientNote: approvalNote.trim() || undefined }),
       });
       if (res.ok) {
-        toast.success("Grocery list approved! A virtual card will be funded from the chef's booking earnings.");
+        toast.success("Grocery list approved! A Foodies Pay card will be funded from the chef's booking earnings.");
         setApprovalNote("");
         fetchGroceryList(bookingId);
       } else {

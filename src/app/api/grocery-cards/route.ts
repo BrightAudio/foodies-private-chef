@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       const details = await retrieveIssuingCardDetails(stripeCard.id);
       return NextResponse.json({
         success: true,
-        message: "Test card created successfully. Virtual card issuing is working!",
+        message: "Test Foodies Pay card created successfully!",
         card: {
           id: stripeCard.id,
           last4: stripeCard.last4,
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
     where: { bookingId, status: { in: ["ACTIVE", "FROZEN"] } },
   });
   if (existing) {
-    return NextResponse.json({ error: "An active grocery card already exists for this booking" }, { status: 409 });
+    return NextResponse.json({ error: "An active Foodies Pay card already exists for this booking" }, { status: 409 });
   }
 
   const chefProfile = await prisma.chefProfile.findUnique({
@@ -273,15 +273,15 @@ export async function POST(req: NextRequest) {
     await createNotification({
       userId: chefProfile.userId,
       type: "GROCERY_CARD",
-      title: "Grocery Card Issued",
-      body: `A virtual grocery card (${cardNumber}) with $${parseFloat(String(budget)).toFixed(2)} has been funded from your booking earnings.`,
+      title: "Foodies Pay Card Issued",
+      body: `Your Foodies Pay card (${cardNumber}) with $${parseFloat(String(budget)).toFixed(2)} has been funded from your booking earnings.`,
       data: { link: "/chef/dashboard" },
     });
 
     return NextResponse.json(card, { status: 201 });
   } catch (err: unknown) {
     console.error("Stripe Issuing error:", err);
-    const message = err instanceof Error ? err.message : "Failed to create virtual grocery card";
+    const message = err instanceof Error ? err.message : "Failed to create Foodies Pay card";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -327,7 +327,7 @@ export async function PATCH(req: NextRequest) {
         data: { spent: newSpent, status },
       });
       if (status === "DEPLETED") {
-        await createNotification({ userId: card.booking.clientId, type: "GROCERY_CARD", title: "Grocery Card Depleted", body: `The grocery card (${card.cardNumber}) budget has been fully spent.`, data: { link: "/client/bookings" } });
+        await createNotification({ userId: card.booking.clientId, type: "GROCERY_CARD", title: "Foodies Pay Card Depleted", body: `Your Foodies Pay card (${card.cardNumber}) budget has been fully spent.`, data: { link: "/client/bookings" } });
       }
       return NextResponse.json(updated);
     }
@@ -339,7 +339,7 @@ export async function PATCH(req: NextRequest) {
         try { await updateIssuingCardStatus(card.stripeCardId, "inactive"); } catch (err) { console.error("Stripe freeze error:", err); }
       }
       const updated = await prisma.groceryCard.update({ where: { id: cardId }, data: { status: "FROZEN" } });
-      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Grocery Card Frozen", body: `Your grocery card (${card.cardNumber}) has been frozen.`, data: { link: "/chef/dashboard" } });
+      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Foodies Pay Card Frozen", body: `Your Foodies Pay card (${card.cardNumber}) has been frozen.`, data: { link: "/chef/dashboard" } });
       return NextResponse.json(updated);
     }
     case "unfreeze": {
@@ -349,7 +349,7 @@ export async function PATCH(req: NextRequest) {
         try { await updateIssuingCardStatus(card.stripeCardId, "active"); } catch (err) { console.error("Stripe unfreeze error:", err); }
       }
       const updated = await prisma.groceryCard.update({ where: { id: cardId }, data: { status: "ACTIVE" } });
-      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Grocery Card Unfrozen", body: `Your grocery card (${card.cardNumber}) has been unfrozen.`, data: { link: "/chef/dashboard" } });
+      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Foodies Pay Card Active", body: `Your Foodies Pay card (${card.cardNumber}) has been unfrozen.`, data: { link: "/chef/dashboard" } });
       return NextResponse.json(updated);
     }
     case "close": {
@@ -360,7 +360,7 @@ export async function PATCH(req: NextRequest) {
         try { await updateIssuingCardStatus(card.stripeCardId, "canceled"); } catch (err) { console.error("Stripe cancel error:", err); }
       }
       const updated = await prisma.groceryCard.update({ where: { id: cardId }, data: { status: "CLOSED", closedAt: new Date() } });
-      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Grocery Card Closed", body: `Your grocery card (${card.cardNumber}) has been closed.`, data: { link: "/chef/dashboard" } });
+      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Foodies Pay Card Closed", body: `Your Foodies Pay card (${card.cardNumber}) has been closed.`, data: { link: "/chef/dashboard" } });
       return NextResponse.json(updated);
     }
     case "updateBudget": {
@@ -378,7 +378,7 @@ export async function PATCH(req: NextRequest) {
         where: { id: cardId },
         data: { budget: parseFloat(String(newBudget)), status: card.status === "DEPLETED" ? "ACTIVE" : card.status },
       });
-      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Grocery Card Budget Updated", body: `Your grocery card budget has been updated to $${parseFloat(String(newBudget)).toFixed(2)}.`, data: { link: "/chef/dashboard" } });
+      await createNotification({ userId: card.chefProfile.userId, type: "GROCERY_CARD", title: "Foodies Pay Budget Updated", body: `Your Foodies Pay card budget has been updated to $${parseFloat(String(newBudget)).toFixed(2)}.`, data: { link: "/chef/dashboard" } });
       return NextResponse.json(updated);
     }
     default:

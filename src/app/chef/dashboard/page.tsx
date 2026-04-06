@@ -1475,7 +1475,7 @@ export default function ChefDashboard() {
                     {groceryListForm === b.id && (
                       <div className="bg-dark border border-gold/20 p-5 space-y-3">
                         <h4 className="text-sm font-bold text-gold">📝 Create Grocery List</h4>
-                        <p className="text-xs text-cream-muted">Add items you need. AI will estimate costs from nearby stores. Client must approve before a virtual card is funded from your booking earnings.</p>
+                        <p className="text-xs text-cream-muted">Add items you need. AI will estimate costs from nearby stores. Client must approve before your Foodies Pay card is funded from your booking earnings.</p>
                         {groceryListItems.map((item, i) => (
                           <div key={i} className="flex gap-2 items-center">
                             <input type="text" placeholder="Item name" value={item.name} onChange={(e) => { const n = [...groceryListItems]; n[i].name = e.target.value; setGroceryListItems(n); }} className="flex-1 border border-dark-border bg-dark px-3 py-2 text-sm text-cream" />
@@ -1530,7 +1530,7 @@ export default function ChefDashboard() {
                         )}
                         {groceryLists[b.id].status === "APPROVED" && !groceryCards[b.id] && (
                           <button onClick={() => fundGroceryCard(groceryLists[b.id].id, b.id)} disabled={groceryListSubmitting} className="bg-gold text-dark px-5 py-2 text-sm font-semibold tracking-wider uppercase hover:bg-gold-light transition-colors disabled:opacity-40">
-                            {groceryListSubmitting ? "Funding..." : "💳 Fund Virtual Card"}
+                            {groceryListSubmitting ? "Funding..." : "💳 Fund Foodies Pay Card"}
                           </button>
                         )}
                       </div>
@@ -1540,7 +1540,7 @@ export default function ChefDashboard() {
                     {groceryCards[b.id] && (
                       <div className="bg-dark border border-dark-border p-4 space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-bold text-gold">💳 Virtual Grocery Card</h4>
+                          <h4 className="text-sm font-bold text-gold">💳 Foodies Pay Card</h4>
                           <span className={`text-[10px] font-bold px-2 py-0.5 ${
                             groceryCards[b.id].status === "ACTIVE" ? "text-emerald-400 bg-emerald-500/10" :
                             groceryCards[b.id].status === "FROZEN" ? "text-blue-400 bg-blue-500/10" :
@@ -1565,7 +1565,7 @@ export default function ChefDashboard() {
                             ) : (
                               <div className="bg-gradient-to-br from-dark-card to-dark border border-gold/30 p-4 rounded space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[10px] text-cream-muted/60 uppercase tracking-wider">Virtual Card Details</span>
+                                  <span className="text-[10px] text-cream-muted/60 uppercase tracking-wider">Foodies Pay Details</span>
                                   <button onClick={() => setCardDetails(prev => ({ ...prev, [b.id]: null }))} className="text-cream-muted/40 text-xs hover:text-cream transition-colors">Hide</button>
                                 </div>
                                 <p className="font-mono text-lg tracking-widest text-cream">{cardDetails[b.id]!.number.replace(/(\d{4})/g, "$1 ").trim()}</p>

@@ -314,7 +314,7 @@ export async function PATCH(req: NextRequest) {
         userId: list.chefProfile.userId,
         type: "GROCERY_CARD",
         title: "Grocery List Approved!",
-        body: `Your client approved the $${list.estimatedTotal.toFixed(2)} grocery list. A virtual card will be funded from your booking earnings.`,
+        body: `Your client approved the $${list.estimatedTotal.toFixed(2)} grocery list. Your Foodies Pay card will be funded from your booking earnings.`,
         data: { link: "/chef/dashboard" },
       }).catch(console.error);
 
@@ -403,8 +403,8 @@ export async function PATCH(req: NextRequest) {
       await createNotification({
         userId: list.chefProfile.userId,
         type: "GROCERY_CARD",
-        title: "Grocery Card Funded!",
-        body: `Your virtual grocery card (${cardNumber}) has been loaded with $${list.estimatedTotal.toFixed(2)} from your booking earnings. View details and add to Apple Pay from your dashboard.`,
+        title: "Foodies Pay Card Funded!",
+        body: `Your Foodies Pay card (${cardNumber}) has been loaded with $${list.estimatedTotal.toFixed(2)} from your booking earnings. View details and add to Apple Pay from your dashboard.`,
         data: { link: "/chef/dashboard" },
       }).catch(console.error);
 

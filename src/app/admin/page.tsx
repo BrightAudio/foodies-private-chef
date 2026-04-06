@@ -1743,8 +1743,8 @@ export default function AdminDashboard() {
         {/* Card Tools Tab */}
         {!loading && tab === "stripe" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-cream">Virtual Card Test</h2>
-            <p className="text-cream-muted text-sm">Create a test virtual card to verify card issuing is configured correctly. No chef or booking required.</p>
+            <h2 className="text-xl font-bold text-cream">Foodies Pay Test</h2>
+            <p className="text-cream-muted text-sm">Create a test Foodies Pay card to verify card issuing is configured correctly. No chef or booking required.</p>
             <div className="bg-dark-card border border-dark-border p-6 max-w-lg space-y-4">
               <button
                 type="button"
@@ -1769,7 +1769,7 @@ export default function AdminDashboard() {
                 }}
                 className="px-6 py-3 bg-gold text-dark font-bold uppercase tracking-wider text-sm hover:bg-gold-light disabled:opacity-50"
               >
-                {testCardLoading ? "Creating..." : "Create Test Card ($25)"}
+                {testCardLoading ? "Creating..." : "Create Test Foodies Pay Card ($25)"}
               </button>
 
               {testCardResult && (
